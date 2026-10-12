@@ -17,6 +17,7 @@ import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -30,6 +31,7 @@ import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.Filepath;
 import net.runelite.client.util.ImageUtil;
+import net.runelite.client.util.Text;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.OkHttpClient;
@@ -82,6 +84,8 @@ public class NylocasPlugin extends Plugin
 	private int keySaveGeneration;
 	private volatile boolean running;
 	private volatile List<EventTile> tiles = List.of();
+	private String raidChatName;
+	private long raidChatAt;
 
 	@Provides
 	NylocasConfig provideConfig(ConfigManager configManager)
@@ -121,6 +125,7 @@ public class NylocasPlugin extends Plugin
 			fetchCall = null;
 		}
 		tiles = List.of();
+		raidChatName = null;
 		EventPanel current = panel;
 		panel = null;
 		if (current != null)
@@ -366,12 +371,33 @@ public class NylocasPlugin extends Plugin
 	}
 
 	@Subscribe
+	public void onChatMessage(ChatMessage event)
+	{
+		if (event.getType() != ChatMessageType.GAMEMESSAGE)
+		{
+			return;
+		}
+		String name = RaidSource.fromChat(Text.removeTags(event.getMessage()));
+		if (name == null)
+		{
+			return;
+		}
+		raidChatName = name;
+		raidChatAt = System.currentTimeMillis();
+	}
+
+	@Subscribe
 	public void onLootReceived(LootReceived lootReceived)
 	{
+		String sourceName = lootSource(lootReceived.getName());
+		if (sourceName == null)
+		{
+			return;
+		}
 		List<String> titles = new ArrayList<>();
 		for (ItemStack item : lootReceived.getItems())
 		{
-			for (String title : AllowedDrops.titles(tiles, lootReceived.getName(), item.getId()))
+			for (String title : AllowedDrops.titles(tiles, sourceName, item.getId()))
 			{
 				if (!titles.contains(title))
 				{
@@ -384,7 +410,22 @@ public class NylocasPlugin extends Plugin
 			return;
 		}
 		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Allowed drop: " + String.join(", ", titles), null);
-		log.debug("Allowed drop from {}", lootReceived.getName());
+		log.debug("Allowed drop from {}", sourceName);
+	}
+
+	private String lootSource(String lootName)
+	{
+		String chat = raidChatName;
+		if (chat != null && System.currentTimeMillis() - raidChatAt > RaidSource.MAX_AGE_MS)
+		{
+			chat = null;
+		}
+		String source = RaidSource.resolve(lootName, chat);
+		if (RaidSource.isChest(lootName))
+		{
+			raidChatName = null;
+		}
+		return source;
 	}
 
 	private String itemName(int id)

@@ -48,6 +48,9 @@ final class EventItem
 final class EventSource
 {
 	String name;
+
+	@SerializedName("runelite_names")
+	List<String> runeliteNames;
 }
 
 final class ListedDrop
@@ -345,9 +348,16 @@ final class AllowedDrops
 		}
 		for (EventSource source : item.sources)
 		{
-			if (source != null && sourceName.equals(source.name))
+			if (source == null || source.runeliteNames == null)
 			{
-				return true;
+				continue;
+			}
+			for (String name : source.runeliteNames)
+			{
+				if (sourceName.equals(name))
+				{
+					return true;
+				}
 			}
 		}
 		return false;

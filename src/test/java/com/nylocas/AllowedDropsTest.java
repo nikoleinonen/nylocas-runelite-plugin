@@ -13,14 +13,15 @@ public class AllowedDropsTest
 	{
 		List<EventTile> tiles = List.of(seedTile());
 
-		assertEquals(List.of("Weapon and Armour seed"), AllowedDrops.titles(tiles, "The Gauntlet", 4207));
-		assertEquals(List.of("Weapon and Armour seed"), AllowedDrops.titles(tiles, "The Corrupted Gauntlet", 4207));
+		assertEquals(List.of("Weapon and Armour seed"), AllowedDrops.titles(tiles, "Crystalline Hunllef", 4207));
+		assertEquals(List.of("Weapon and Armour seed"), AllowedDrops.titles(tiles, "Corrupted Hunllef", 4207));
+		assertTrue(AllowedDrops.titles(tiles, "The Gauntlet", 4207).isEmpty());
 	}
 
 	@Test
 	public void otherItemFromGauntlet()
 	{
-		assertTrue(AllowedDrops.titles(List.of(seedTile()), "The Gauntlet", 4151).isEmpty());
+		assertTrue(AllowedDrops.titles(List.of(seedTile()), "Crystalline Hunllef", 4151).isEmpty());
 	}
 
 	@Test
@@ -101,8 +102,10 @@ public class AllowedDropsTest
 	{
 		EventSource corrupted = new EventSource();
 		corrupted.name = "The Corrupted Gauntlet";
+		corrupted.runeliteNames = List.of("Corrupted Hunllef");
 		EventSource gauntlet = new EventSource();
 		gauntlet.name = "The Gauntlet";
+		gauntlet.runeliteNames = List.of("Crystalline Hunllef");
 
 		EventItem seed = new EventItem();
 		seed.item = "crystal_weapon_seed";
