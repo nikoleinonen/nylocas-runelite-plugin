@@ -11,6 +11,8 @@ final class EventBoard
 	@SerializedName("team_name")
 	String teamName;
 
+	String rank;
+
 	@SerializedName("open_row")
 	int openRow;
 

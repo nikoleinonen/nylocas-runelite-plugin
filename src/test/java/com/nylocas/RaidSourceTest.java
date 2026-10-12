@@ -22,7 +22,7 @@ public class RaidSourceTest
 	public void ignoresOtherKillCounts()
 	{
 		assertNull(RaidSource.fromKillCount("Your Zulrah kill count is: 50."));
-		assertNull(RaidSource.fromKillCount("Allowed drop: Armadyl piece"));
+		assertNull(RaidSource.fromKillCount("received: Twisted bow, from: Chambers of Xeric"));
 		assertNull(RaidSource.fromKillCount(null));
 	}
 

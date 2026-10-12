@@ -5,43 +5,137 @@ import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.event.HierarchyEvent;
+import java.awt.image.BufferedImage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JPasswordField;
+import javax.swing.JToolTip;
 import javax.swing.Timer;
+import javax.swing.ToolTipManager;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.util.AsyncBufferedImage;
+import net.runelite.client.util.ImageUtil;
+import net.runelite.client.util.LinkBrowser;
+import net.runelite.client.util.SwingUtil;
 
 final class EventPanel extends PluginPanel
 {
 	private static final int TEXT_WIDTH = 190;
-	private static final int CELL = 36;
+	private static final int GRID_GAP = 2;
+	private static final Color INCOMPLETE_COLOR = new Color(0x1e1e1e);
+	private static final Color BORDER_LINE = new Color(0x171717);
 	private static final Border CELL_BORDER = BorderFactory.createLineBorder(ColorScheme.DARKER_GRAY_COLOR, 1);
+	private static final Border INCOMPLETE_BORDER = BorderFactory.createLineBorder(BORDER_LINE, 1);
 	private static final Border SELECTED_BORDER = BorderFactory.createLineBorder(ColorScheme.TEXT_COLOR, 1);
-	private static final Color COMPLETE_COLOR = new Color(28, 92, 42);
-	private static final Color PARTIAL_COLOR = new Color(122, 78, 18);
-	private static final Color MUTED_TEXT = new Color(160, 160, 160);
-	private static final Color PENDING_TEXT = new Color(214, 176, 92);
-	private static final Color PROGRESS_TEXT = new Color(126, 196, 140);
+	private static final Border ITEM_BORDER = BorderFactory.createCompoundBorder(
+		BorderFactory.createLineBorder(BORDER_LINE, 1),
+		new EmptyBorder(4, 4, 4, 6)
+	);
+	private static final Color COMPLETE_COLOR = new Color(0x10b981);
+	private static final Color PARTIAL_COLOR = new Color(0xfbbf24);
+	private static final Color MUTED_TEXT = new Color(0x7b8087);
+	private static final Color PENDING_TEXT = new Color(0xfbbf24);
+	private static final Color PROGRESS_TEXT = new Color(0x10b981);
+	private static final Color TITLE_ACCENT = new Color(0x699172);
+	private static final Color GOLD = new Color(0xe4c56a);
+	private static final Color SILVER = new Color(0xc5c9d0);
+	private static final Color BRONZE = new Color(0xc4894a);
+	private static final Color HEADER_COLOR = new Color(0x1e1e1e);
+	private static final Color HEADER_LINE = new Color(0x171717);
 	private static final int COOLDOWN_MS = 60_000;
-	private static final String FETCH_LABEL = "Fetch event";
+	private static final int REFRESH_ICON = 16;
+	private static final int LINK_ICON = 16;
+	private static final String ICON_STYLE = "border: 3,0,3,0,#0000";
+	private static final String DISCORD_URL = "https://discord.gg/3T23DAehU5";
+	private static final String GITHUB_URL = "https://github.com/nikoleinonen/nylocas-runelite-plugin";
+	private static final String WEBSITE_URL = "https://nylocas.com/";
+	private static final String KEY_HINT = "Set team key in config";
 
 	private final NylocasPlugin plugin;
-	private final JPasswordField keyField = new JPasswordField();
-	private final JButton fetchButton = new JButton(FETCH_LABEL);
-	private final JLabel status = new JLabel(" ");
+	private final JButton refreshButton = new JButton()
+	{
+		@Override
+		public String getToolTipText()
+		{
+			return refreshTooltip();
+		}
+
+		@Override
+		public JToolTip createToolTip()
+		{
+			JToolTip tip = super.createToolTip();
+			watchRefreshTip(tip);
+			return tip;
+		}
+	};
+	// A disabled button does not receive mouse events, so the cooldown tooltip is also on this host.
+	private final JPanel refreshHost = new JPanel(new BorderLayout())
+	{
+		@Override
+		public String getToolTipText()
+		{
+			return refreshTooltip();
+		}
+
+		@Override
+		public JToolTip createToolTip()
+		{
+			JToolTip tip = super.createToolTip();
+			watchRefreshTip(tip);
+			return tip;
+		}
+	};
+	private JToolTip refreshTip;
+	private Timer refreshTipTimer;
+	private int savedDismissDelay = -1;
+	private final JLabel status = new JLabel(" ")
+	{
+		@Override
+		public Dimension getPreferredSize()
+		{
+			Dimension size = super.getPreferredSize();
+			size.width = 0;
+			return size;
+		}
+
+		@Override
+		public Dimension getMinimumSize()
+		{
+			Dimension size = super.getMinimumSize();
+			size.width = 0;
+			return size;
+		}
+	};
+	private final JLabel rank = new JLabel();
+	private final JPanel statusRow = new JPanel(new BorderLayout(8, 0))
+	{
+		@Override
+		public Dimension getPreferredSize()
+		{
+			Dimension size = super.getPreferredSize();
+			size.width = 0;
+			return size;
+		}
+
+		@Override
+		public Dimension getMinimumSize()
+		{
+			Dimension size = super.getMinimumSize();
+			size.width = 0;
+			return size;
+		}
+	};
 	private final JPanel gridHost = new JPanel();
 	private final JPanel detail = new JPanel();
 	private final Map<JPanel, EventTile> cells = new HashMap<>();
@@ -49,9 +143,7 @@ final class EventPanel extends PluginPanel
 	private Map<Integer, AsyncBufferedImage> itemImages = Map.of();
 	private JPanel selectedCell;
 	private boolean fetching;
-	private boolean suppressKeySave;
-	private boolean keyEdited;
-	private boolean keyLoaded;
+	private boolean fetched;
 	private volatile boolean stopped;
 	private long cooldownUntil;
 	private Timer cooldownTimer;
@@ -60,107 +152,166 @@ final class EventPanel extends PluginPanel
 	{
 		super();
 		this.plugin = plugin;
+		setBorder(new EmptyBorder(0, 0, PluginPanel.BORDER_OFFSET, 0));
+		getScrollPane().setBorder(BorderFactory.createMatteBorder(1, 1, 1, 0, HEADER_LINE));
+		// The bar keeps its column even when the list fits, so the board and item cards do not shift.
+		getScrollPane().setVerticalScrollBarPolicy(javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
 
-		keyField.setEchoChar('\u2022');
+		String accent = String.format("#%06X", TITLE_ACCENT.getRGB() & 0xFFFFFF);
+		JLabel title = new JLabel("<html><b>Nylocas <span style='color: " + accent + "'>Clan Events</span></b></html>");
+		title.setForeground(ColorScheme.TEXT_COLOR);
 
-		JPanel form = new JPanel(new GridLayout(0, 1, 0, 8));
-		form.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		form.add(new JLabel("Team key"));
-		form.add(keyField);
-		form.add(fetchButton);
-		form.add(status);
-		add(form);
+		BufferedImage icon = ImageUtil.resizeImage(ImageUtil.loadImageResource(getClass(), "refresh.png"), REFRESH_ICON, REFRESH_ICON);
+		refreshButton.setIcon(new ImageIcon(icon));
+		refreshButton.setToolTipText("Fetch event");
+		refreshButton.setFocusable(false);
+		refreshButton.setOpaque(false);
+		refreshButton.setContentAreaFilled(false);
+		SwingUtil.removeButtonDecorations(refreshButton);
+		refreshButton.putClientProperty("FlatLaf.style", ICON_STYLE);
+		refreshButton.addActionListener(event -> fetch());
+		refreshHost.setOpaque(false);
+		refreshHost.setToolTipText("Fetch event");
+		refreshHost.add(refreshButton);
+
+		JPanel titleWrap = new JPanel(new BorderLayout());
+		titleWrap.setOpaque(false);
+		titleWrap.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(0, 0, 0, 1, HEADER_LINE),
+			new EmptyBorder(4, PluginPanel.BORDER_OFFSET, 4, 8)
+		));
+		titleWrap.add(title, BorderLayout.CENTER);
+
+		JPanel buttons = new JPanel(new GridLayout(1, 4))
+		{
+			@Override
+			public Dimension getPreferredSize()
+			{
+				Dimension size = super.getPreferredSize();
+				size.width = 0;
+				return size;
+			}
+
+			@Override
+			public Dimension getMinimumSize()
+			{
+				Dimension size = super.getMinimumSize();
+				size.width = 0;
+				return size;
+			}
+		};
+		buttons.setOpaque(false);
+		buttons.setBorder(new EmptyBorder(4, 0, 4, 0));
+		buttons.add(refreshHost);
+		buttons.add(linkButton("website.png", "Website", WEBSITE_URL));
+		buttons.add(linkButton("discord.png", "Discord", DISCORD_URL));
+		buttons.add(linkButton("github.png", "GitHub", GITHUB_URL));
+
+		JPanel titleRow = new JPanel(new BorderLayout());
+		titleRow.setBackground(HEADER_COLOR);
+		titleRow.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, HEADER_LINE));
+		titleRow.add(titleWrap, BorderLayout.WEST);
+		titleRow.add(buttons, BorderLayout.CENTER);
+		add(titleRow);
+
+		status.setForeground(ColorScheme.TEXT_COLOR);
+		rank.setForeground(ColorScheme.TEXT_COLOR);
+		rank.setHorizontalAlignment(JLabel.RIGHT);
+		rank.setVisible(false);
+		statusRow.setOpaque(false);
+		statusRow.setBorder(new EmptyBorder(8, PluginPanel.BORDER_OFFSET, 0, PluginPanel.BORDER_OFFSET));
+		statusRow.add(status, BorderLayout.CENTER);
+		statusRow.add(rank, BorderLayout.EAST);
+		add(statusRow);
 
 		gridHost.setLayout(new BoxLayout(gridHost, BoxLayout.Y_AXIS));
 		gridHost.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		gridHost.setBorder(new EmptyBorder(8, 0, 0, 0));
+		gridHost.setBorder(new EmptyBorder(8, PluginPanel.BORDER_OFFSET, 0, PluginPanel.BORDER_OFFSET));
+		gridHost.addComponentListener(new java.awt.event.ComponentAdapter()
+		{
+			@Override
+			public void componentResized(java.awt.event.ComponentEvent event)
+			{
+				fitBoard();
+			}
+		});
 		add(gridHost);
 
 		detail.setLayout(new BoxLayout(detail, BoxLayout.Y_AXIS));
 		detail.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		detail.setBorder(new EmptyBorder(8, 0, 0, 0));
+		detail.setBorder(new EmptyBorder(8, PluginPanel.BORDER_OFFSET, 0, PluginPanel.BORDER_OFFSET));
 		add(detail);
 
-		fetchButton.setEnabled(false);
-		fetchButton.addActionListener(event -> fetch());
-		keyField.getDocument().addDocumentListener(new DocumentListener()
-		{
-			@Override
-			public void insertUpdate(DocumentEvent event)
-			{
-				keyChanged();
-			}
-
-			@Override
-			public void removeUpdate(DocumentEvent event)
-			{
-				keyChanged();
-			}
-
-			@Override
-			public void changedUpdate(DocumentEvent event)
-			{
-				keyChanged();
-			}
-		});
-
-		refreshButton();
+		onTeamKeyChanged();
 	}
 
-	void showSavedKey(String key)
+	@Override
+	public void onActivate()
+	{
+		if (stopped || fetched)
+		{
+			return;
+		}
+		fetched = fetch();
+	}
+
+	void onTeamKeyChanged()
 	{
 		if (stopped)
 		{
 			return;
 		}
-		keyLoaded = true;
-		if (!keyEdited)
+		if (currentKey().isEmpty())
 		{
-			suppressKeySave = true;
-			keyField.setText(key == null ? "" : key);
-			suppressKeySave = false;
-			refreshButton();
-			return;
+			if (status.getText() == null || status.getText().isBlank())
+			{
+				status.setText(KEY_HINT);
+			}
 		}
-		plugin.queueTeamKey(currentKey());
+		else if (KEY_HINT.equals(status.getText()))
+		{
+			status.setText(" ");
+		}
+		refreshButton();
 	}
 
-	private void keyChanged()
+	private JButton linkButton(String resource, String tooltip, String url)
 	{
-		refreshButton();
-		if (suppressKeySave)
-		{
-			return;
-		}
-		keyEdited = true;
-		if (keyLoaded)
-		{
-			plugin.queueTeamKey(currentKey());
-		}
+		BufferedImage image = ImageUtil.resizeImage(ImageUtil.loadImageResource(getClass(), resource), LINK_ICON, LINK_ICON);
+		JButton button = new JButton(new ImageIcon(image));
+		button.setToolTipText(tooltip);
+		button.setFocusable(false);
+		button.setOpaque(false);
+		button.setContentAreaFilled(false);
+		SwingUtil.removeButtonDecorations(button);
+		button.putClientProperty("FlatLaf.style", ICON_STYLE);
+		button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		button.addActionListener(event -> LinkBrowser.browse(url));
+		return button;
 	}
 
 	private String currentKey()
 	{
-		return new String(keyField.getPassword()).trim();
+		return plugin.teamKey();
 	}
 
-	private void fetch()
+	private boolean fetch()
 	{
 		String key = currentKey();
 		if (key.isEmpty() || fetching || coolingDown())
 		{
-			return;
+			return false;
 		}
-		plugin.flushTeamKey(key);
 		fetching = true;
-		fetchButton.setEnabled(false);
 		status.setText("Fetching...");
+		clearRank();
 		clearBoard();
 		if (!plugin.fetchEvent(key, this))
 		{
-			return;
+			return false;
 		}
 		startCooldown();
+		return true;
 	}
 
 	void stop()
@@ -170,33 +321,23 @@ final class EventPanel extends PluginPanel
 		{
 			cooldownTimer.stop();
 		}
+		clearRefreshTip();
 	}
 
 	private void startCooldown()
 	{
 		cooldownUntil = System.currentTimeMillis() + COOLDOWN_MS;
-		if (cooldownTimer == null)
+		if (cooldownTimer != null)
 		{
-			cooldownTimer = new Timer(1000, event -> tickCooldown());
-		}
-		cooldownTimer.setInitialDelay(0);
-		cooldownTimer.restart();
-	}
-
-	private void tickCooldown()
-	{
-		long left = cooldownUntil - System.currentTimeMillis();
-		if (left <= 0)
-		{
-			cooldownUntil = 0;
-			fetchButton.setText(FETCH_LABEL);
 			cooldownTimer.stop();
 		}
-		else
+		cooldownTimer = new Timer(COOLDOWN_MS, event ->
 		{
-			int seconds = (int) Math.ceil(left / 1000.0);
-			fetchButton.setText(FETCH_LABEL + " (" + seconds + "s)");
-		}
+			cooldownUntil = 0;
+			refreshButton();
+		});
+		cooldownTimer.setRepeats(false);
+		cooldownTimer.start();
 		refreshButton();
 	}
 
@@ -209,6 +350,7 @@ final class EventPanel extends PluginPanel
 	{
 		fetching = false;
 		status.setText(message);
+		clearRank();
 		clearBoard();
 		refreshButton();
 	}
@@ -217,6 +359,7 @@ final class EventPanel extends PluginPanel
 	{
 		fetching = false;
 		status.setText(teamLabel(board));
+		showRank(board);
 		itemNames = names == null ? Map.of() : names;
 		itemImages = images == null ? Map.of() : images;
 		selectedCell = null;
@@ -231,14 +374,8 @@ final class EventPanel extends PluginPanel
 		}
 		else
 		{
-			JPanel grid = new JPanel(new GridLayout(rows, cols, 2, 2));
-			grid.setBackground(ColorScheme.DARK_GRAY_COLOR);
-			int width = PluginPanel.PANEL_WIDTH - PluginPanel.BORDER_OFFSET * 2;
-			int height = CELL * rows + 2 * (rows - 1);
-			grid.setPreferredSize(new Dimension(width, height));
-			grid.setMinimumSize(grid.getPreferredSize());
-			grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
-			grid.setAlignmentX(LEFT_ALIGNMENT);
+			SquareGrid grid = new SquareGrid(rows, cols);
+			grid.fit(boardWidth());
 			int openRow = board.openRow;
 			for (int row = 0; row < rows; row++)
 			{
@@ -265,11 +402,55 @@ final class EventPanel extends PluginPanel
 		refreshButton();
 	}
 
+	private int boardWidth()
+	{
+		int inner = gridHost.getWidth() - gridHost.getInsets().left - gridHost.getInsets().right;
+		if (gridHost.getWidth() > 0)
+		{
+			return Math.max(1, inner);
+		}
+		int bar = getScrollPane().getVerticalScrollBar().getPreferredSize().width;
+		if (bar <= 0)
+		{
+			bar = PluginPanel.SCROLLBAR_WIDTH;
+		}
+		java.awt.Insets scroll = getScrollPane().getInsets();
+		java.awt.Insets panel = getInsets();
+		java.awt.Insets host = gridHost.getInsets();
+		int view = PluginPanel.PANEL_WIDTH + PluginPanel.SCROLLBAR_WIDTH - scroll.left - scroll.right - bar;
+		return Math.max(1, view - panel.left - panel.right - host.left - host.right);
+	}
+
+	private void fitBoard()
+	{
+		if (gridHost.getComponentCount() != 1 || !(gridHost.getComponent(0) instanceof SquareGrid))
+		{
+			return;
+		}
+		int width = gridHost.getWidth() - gridHost.getInsets().left - gridHost.getInsets().right;
+		if (width <= 0)
+		{
+			return;
+		}
+		SquareGrid grid = (SquareGrid) gridHost.getComponent(0);
+		if (grid.getPreferredSize().width == width)
+		{
+			return;
+		}
+		Dimension before = grid.getPreferredSize();
+		grid.fit(width);
+		if (grid.getPreferredSize().equals(before))
+		{
+			return;
+		}
+		gridHost.revalidate();
+	}
+
 	private JPanel tileCell(EventTile tile)
 	{
 		JPanel cell = new JPanel(new GridLayout(1, 1));
 		cell.setBackground(tileColor(tile));
-		cell.setBorder(CELL_BORDER);
+		cell.setBorder(tileBorder(tile));
 		cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		cell.setToolTipText(tileTooltip(tile));
 		JLabel label = new JLabel();
@@ -295,8 +476,8 @@ final class EventPanel extends PluginPanel
 	private JPanel lockedCell(boolean empty)
 	{
 		JPanel cell = new JPanel(new GridLayout(1, 1));
-		cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		cell.setBorder(CELL_BORDER);
+		cell.setBackground(INCOMPLETE_COLOR);
+		cell.setBorder(INCOMPLETE_BORDER);
 		cell.setToolTipText(empty ? "Empty" : "Locked");
 		return cell;
 	}
@@ -305,7 +486,7 @@ final class EventPanel extends PluginPanel
 	{
 		if (selectedCell != null)
 		{
-			selectedCell.setBorder(CELL_BORDER);
+			selectedCell.setBorder(tileBorder(cells.get(selectedCell)));
 		}
 		selectedCell = cell;
 		cell.setBorder(SELECTED_BORDER);
@@ -363,7 +544,45 @@ final class EventPanel extends PluginPanel
 		{
 			return " ";
 		}
-		return "<html><b>" + escape(board.teamName) + "</b></html>";
+		return "<html><nobr><b>" + escape(board.teamName) + "</b></nobr></html>";
+	}
+
+	private void showRank(EventBoard board)
+	{
+		String place = board == null || board.rank == null ? "" : board.rank.trim();
+		if (place.isEmpty())
+		{
+			clearRank();
+			return;
+		}
+		Color color = rankColor(place);
+		String hex = String.format("#%06X", color.getRGB() & 0xFFFFFF);
+		rank.setForeground(color);
+		rank.setText("<html><nobr><b><span style='color: " + hex + "'>" + escape(place) + "</span></b></nobr></html>");
+		rank.setVisible(true);
+	}
+
+	private void clearRank()
+	{
+		rank.setText("");
+		rank.setVisible(false);
+	}
+
+	static Color rankColor(String place)
+	{
+		if ("WINNER".equals(place) || "1st".equals(place))
+		{
+			return GOLD;
+		}
+		if ("2nd".equals(place))
+		{
+			return SILVER;
+		}
+		if ("3rd".equals(place))
+		{
+			return BRONZE;
+		}
+		return ColorScheme.TEXT_COLOR;
 	}
 
 	private static EventTile tileAt(List<EventTile> tiles, int row, int col)
@@ -392,18 +611,24 @@ final class EventPanel extends PluginPanel
 		{
 			return PARTIAL_COLOR;
 		}
-		return ColorScheme.MEDIUM_GRAY_COLOR;
+		return INCOMPLETE_COLOR;
+	}
+
+	private static Border tileBorder(EventTile tile)
+	{
+		if (tile != null && (tile.complete || tile.partial))
+		{
+			return CELL_BORDER;
+		}
+		return INCOMPLETE_BORDER;
 	}
 
 	private JPanel itemCard(EventTile tile, EventItem item)
 	{
 		String tip = sourceTip(item);
 		JPanel card = new FitWidth(new BorderLayout(6, 0));
-		card.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		card.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR, 1),
-			new EmptyBorder(4, 4, 4, 6)
-		));
+		card.setBackground(INCOMPLETE_COLOR);
+		card.setBorder(ITEM_BORDER);
 		card.setAlignmentX(LEFT_ALIGNMENT);
 		hover(card, tip);
 
@@ -511,11 +736,11 @@ final class EventPanel extends PluginPanel
 	{
 		if (tile.complete)
 		{
-			return "#7ec48c";
+			return "#10b981";
 		}
 		if (tile.partial)
 		{
-			return "#e0b04a";
+			return "#fbbf24";
 		}
 		return "#a0a0a0";
 	}
@@ -528,6 +753,84 @@ final class EventPanel extends PluginPanel
 			return TileText.tileTitle(tile) + " - " + statusText(tile);
 		}
 		return TileText.tileTitle(tile) + " - " + progress + " " + statusText(tile);
+	}
+
+	private static final class SquareGrid extends JPanel
+	{
+		private final int rows;
+		private final int cols;
+		private int cell = 1;
+		private int gap = GRID_GAP;
+		private int extra;
+
+		private SquareGrid(int rows, int cols)
+		{
+			this.rows = rows;
+			this.cols = cols;
+			setAlignmentX(LEFT_ALIGNMENT);
+			setBackground(ColorScheme.DARK_GRAY_COLOR);
+		}
+
+		private void fit(int width)
+		{
+			int gaps = Math.max(0, cols - 1);
+			int nextGap = GRID_GAP;
+			int nextCell = cols <= 0 ? 1 : (width - nextGap * gaps) / cols;
+			if (nextCell < 1)
+			{
+				nextCell = 1;
+			}
+			int used = nextCell * cols + nextGap * gaps;
+			if (used > width && gaps > 0)
+			{
+				nextGap = Math.max(0, (width - nextCell * cols) / gaps);
+				used = nextCell * cols + nextGap * gaps;
+			}
+			int leftover = Math.max(0, width - used);
+			if (gaps > 0 && leftover > 0)
+			{
+				nextGap += leftover / gaps;
+				leftover %= gaps;
+			}
+			cell = nextCell;
+			gap = nextGap;
+			extra = leftover;
+			int gridWidth = nextCell * cols + nextGap * gaps + leftover;
+			int gridHeight = nextCell * rows + nextGap * Math.max(0, rows - 1);
+			Dimension size = new Dimension(Math.max(gridWidth, 1), Math.max(gridHeight, 1));
+			setPreferredSize(size);
+			setMinimumSize(size);
+			setMaximumSize(size);
+		}
+
+		@Override
+		public void doLayout()
+		{
+			int count = getComponentCount();
+			int y = 0;
+			for (int row = 0; row < rows; row++)
+			{
+				int x = 0;
+				for (int col = 0; col < cols; col++)
+				{
+					int index = row * cols + col;
+					if (index < count)
+					{
+						getComponent(index).setBounds(x, y, cell, cell);
+					}
+					x += cell;
+					if (col < cols - 1)
+					{
+						x += gap + (col < extra ? 1 : 0);
+					}
+				}
+				y += cell;
+				if (row < rows - 1)
+				{
+					y += gap;
+				}
+			}
+		}
 	}
 
 	private static final class FitWidth extends JPanel
@@ -632,8 +935,76 @@ final class EventPanel extends PluginPanel
 		return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
 	}
 
+	private String refreshTooltip()
+	{
+		if (!coolingDown())
+		{
+			return "Fetch event";
+		}
+		long seconds = (cooldownUntil - System.currentTimeMillis() + 999) / 1000;
+		if (seconds < 1)
+		{
+			seconds = 1;
+		}
+		long minutes = seconds / 60;
+		long remainder = seconds % 60;
+		return "On cooldown (" + minutes + ":" + (remainder < 10 ? "0" : "") + remainder + ")";
+	}
+
+	private void watchRefreshTip(JToolTip tip)
+	{
+		if (refreshTipTimer != null)
+		{
+			refreshTipTimer.stop();
+		}
+		refreshTip = tip;
+		tip.addHierarchyListener(event ->
+		{
+			if ((event.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0 && !tip.isShowing() && refreshTip == tip)
+			{
+				clearRefreshTip();
+			}
+		});
+		if (savedDismissDelay < 0 && coolingDown())
+		{
+			ToolTipManager manager = ToolTipManager.sharedInstance();
+			savedDismissDelay = manager.getDismissDelay();
+			manager.setDismissDelay(COOLDOWN_MS);
+		}
+		refreshTipTimer = new Timer(1000, event ->
+		{
+			if (refreshTip == null || !refreshTip.isShowing())
+			{
+				clearRefreshTip();
+				return;
+			}
+			refreshTip.setTipText(refreshTooltip());
+		});
+		refreshTipTimer.setRepeats(true);
+		refreshTipTimer.start();
+	}
+
+	private void clearRefreshTip()
+	{
+		if (refreshTipTimer != null)
+		{
+			refreshTipTimer.stop();
+			refreshTipTimer = null;
+		}
+		refreshTip = null;
+		if (savedDismissDelay >= 0)
+		{
+			ToolTipManager.sharedInstance().setDismissDelay(savedDismissDelay);
+			savedDismissDelay = -1;
+		}
+	}
+
 	private void refreshButton()
 	{
-		fetchButton.setEnabled(!fetching && !coolingDown() && !currentKey().isEmpty());
+		refreshButton.setEnabled(!fetching && !coolingDown() && !currentKey().isEmpty());
+		if (refreshTip != null && refreshTip.isShowing())
+		{
+			refreshTip.setTipText(refreshTooltip());
+		}
 	}
 }

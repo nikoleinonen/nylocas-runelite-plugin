@@ -2,6 +2,7 @@ package com.nylocas;
 
 import com.google.gson.Gson;
 import com.google.inject.Provides;
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -10,8 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +20,7 @@ import net.runelite.api.events.ChatMessage;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStack;
 import net.runelite.client.plugins.Plugin;
@@ -29,6 +29,7 @@ import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.AsyncBufferedImage;
+import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Filepath;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
@@ -48,7 +49,6 @@ public class NylocasPlugin extends Plugin
 {
 	static final String API_BASE = "http://127.0.0.1:8080";
 	private static final String TEAM_KEY_FILE = "team-key";
-	private static final long KEY_SAVE_DELAY_MS = 400;
 
 	@Inject
 	private Client client;
@@ -72,16 +72,15 @@ public class NylocasPlugin extends Plugin
 	private NylocasConfig config;
 
 	@Inject
+	private ConfigManager configManager;
+
+	@Inject
 	private ScheduledExecutorService executor;
 
-	private final Object keySaveLock = new Object();
 	private final Object keyFileLock = new Object();
 	private NavigationButton navButton;
 	private volatile EventPanel panel;
 	private Call fetchCall;
-	private ScheduledFuture<?> keySaveTask;
-	private String pendingTeamKey;
-	private int keySaveGeneration;
 	private volatile boolean running;
 	private volatile List<EventTile> tiles = List.of();
 	private String raidChatName;
@@ -106,19 +105,14 @@ public class NylocasPlugin extends Plugin
 			.panel(panel)
 			.build();
 		clientToolbar.addNavigation(navButton);
-		executor.execute(this::loadSavedTeamKey);
+		executor.execute(this::migrateTeamKey);
 		log.debug("Nylocas started");
 	}
 
 	@Override
 	protected void shutDown() throws Exception
 	{
-		String leftover = cancelTeamKeySave();
-		if (leftover != null)
-		{
-			String key = leftover;
-			executor.execute(() -> writeTeamKey(key));
-		}
+		running = false;
 		if (fetchCall != null)
 		{
 			fetchCall.cancel();
@@ -140,78 +134,55 @@ public class NylocasPlugin extends Plugin
 		log.debug("Nylocas stopped");
 	}
 
-	void queueTeamKey(String key)
+	String teamKey()
 	{
-		scheduleTeamKeyWrite(key, KEY_SAVE_DELAY_MS);
+		String key = config.teamKey();
+		return key == null ? "" : key.trim();
 	}
 
-	void flushTeamKey(String key)
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event)
 	{
-		scheduleTeamKeyWrite(key, 0);
-	}
-
-	private void loadSavedTeamKey()
-	{
-		String key = readTeamKey();
-		SwingUtilities.invokeLater(() ->
+		if (!NylocasConfig.GROUP.equals(event.getGroup()) || !NylocasConfig.TEAM_KEY.equals(event.getKey()))
 		{
-			EventPanel current = panel;
-			if (running && current != null)
-			{
-				current.showSavedKey(key);
-			}
-		});
+			return;
+		}
+		SwingUtilities.invokeLater(this::refreshPanelKey);
 	}
 
-	private String cancelTeamKeySave()
+	private void refreshPanelKey()
 	{
-		synchronized (keySaveLock)
+		EventPanel current = panel;
+		if (running && current != null)
 		{
-			running = false;
-			String leftover = pendingTeamKey;
-			pendingTeamKey = null;
-			keySaveGeneration++;
-			if (keySaveTask != null)
-			{
-				keySaveTask.cancel(false);
-				keySaveTask = null;
-			}
-			return leftover;
+			current.onTeamKeyChanged();
 		}
 	}
 
-	private void scheduleTeamKeyWrite(String key, long delayMs)
+	private void migrateTeamKey()
 	{
-		synchronized (keySaveLock)
+		if (!running)
 		{
-			if (!running)
+			return;
+		}
+		if (teamKey().isEmpty())
+		{
+			String legacy = readTeamKey();
+			if (legacy == null)
 			{
 				return;
 			}
-			pendingTeamKey = key == null ? "" : key;
-			int generation = ++keySaveGeneration;
-			if (keySaveTask != null)
+			if (!legacy.isEmpty() && running)
 			{
-				keySaveTask.cancel(false);
+				configManager.setConfiguration(NylocasConfig.GROUP, NylocasConfig.TEAM_KEY, legacy);
 			}
-			keySaveTask = executor.schedule(() -> writeQueuedTeamKey(generation), delayMs, TimeUnit.MILLISECONDS);
 		}
-	}
-
-	private void writeQueuedTeamKey(int generation)
-	{
-		String key;
-		synchronized (keySaveLock)
+		if (!running)
 		{
-			if (generation != keySaveGeneration || pendingTeamKey == null)
-			{
-				return;
-			}
-			key = pendingTeamKey;
-			pendingTeamKey = null;
-			keySaveTask = null;
+			return;
 		}
-		writeTeamKey(key);
+		deleteTeamKeyFile();
+		SwingUtilities.invokeLater(this::refreshPanelKey);
 	}
 
 	private String readTeamKey()
@@ -234,31 +205,22 @@ public class NylocasPlugin extends Plugin
 			catch (IOException ex)
 			{
 				log.warn("Could not read the saved team key", ex);
-				return "";
+				return null;
 			}
 		}
 	}
 
-	private void writeTeamKey(String key)
+	private void deleteTeamKeyFile()
 	{
 		synchronized (keyFileLock)
 		{
-			String trimmed = key == null ? "" : key.trim();
 			try
 			{
-				Filepath directory = getPluginDirectory();
-				Filepath file = directory.joinSegment(TEAM_KEY_FILE);
-				if (trimmed.isEmpty())
-				{
-					file.deleteIfExists();
-					return;
-				}
-				directory.createDirectories();
-				file.write(trimmed);
+				teamKeyFile().deleteIfExists();
 			}
 			catch (IOException ex)
 			{
-				log.warn("Could not save the team key", ex);
+				log.warn("Could not remove the saved team key file", ex);
 			}
 		}
 	}
@@ -394,23 +356,26 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		List<String> titles = new ArrayList<>();
 		for (ItemStack item : lootReceived.getItems())
 		{
-			for (String title : AllowedDrops.matchingTitles(tiles, sourceName, item.getId()))
+			if (AllowedDrops.matchingTitles(tiles, sourceName, item.getId()).isEmpty())
 			{
-				if (!titles.contains(title))
-				{
-					titles.add(title);
-				}
+				continue;
 			}
+			String name = itemName(item.getId());
+			if (name == null)
+			{
+				name = Integer.toString(item.getId());
+			}
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", receivedMessage(name, sourceName), null);
+			log.debug("Allowed drop {} from {}", name, sourceName);
 		}
-		if (titles.isEmpty())
-		{
-			return;
-		}
-		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Allowed drop: " + String.join(", ", titles), null);
-		log.debug("Allowed drop from {}", sourceName);
+	}
+
+	private static String receivedMessage(String item, String source)
+	{
+		return "received: " + ColorUtil.wrapWithColorTag(item, Color.RED)
+			+ ", from: " + ColorUtil.wrapWithColorTag(source, Color.RED);
 	}
 
 	private String lootSource(String lootName)
