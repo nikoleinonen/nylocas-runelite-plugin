@@ -268,11 +268,11 @@ public class NylocasPlugin extends Plugin
 		return getPluginDirectory().joinSegment(TEAM_KEY_FILE);
 	}
 
-	boolean fetchEvent(String key, EventPanel panel)
+	boolean fetchEvent(String key, EventPanel view)
 	{
 		if (!config.connect())
 		{
-			panel.showStatus("Turn on Connect to nylocas.com in the plugin settings");
+			view.showStatus("Turn on Connect to nylocas.com in the plugin settings");
 			return false;
 		}
 		if (fetchCall != null)
@@ -295,7 +295,7 @@ public class NylocasPlugin extends Plugin
 					return;
 				}
 				log.debug("Fetch event failed", error);
-				SwingUtilities.invokeLater(() -> panel.showStatus("Could not fetch event"));
+				SwingUtilities.invokeLater(() -> view.showStatus("Could not fetch event"));
 			}
 
 			@Override
@@ -307,7 +307,7 @@ public class NylocasPlugin extends Plugin
 					if (!response.isSuccessful())
 					{
 						String message = errorMessage(body);
-						SwingUtilities.invokeLater(() -> panel.showStatus(message));
+						SwingUtilities.invokeLater(() -> view.showStatus(message));
 						return;
 					}
 					EventBoard board = gson.fromJson(body, EventBoard.class);
@@ -362,7 +362,7 @@ public class NylocasPlugin extends Plugin
 								}
 							}
 						}
-						SwingUtilities.invokeLater(() -> panel.showBoard(loaded, names, images));
+						SwingUtilities.invokeLater(() -> view.showBoard(loaded, names, images));
 					});
 				}
 			}
@@ -377,7 +377,7 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		String name = RaidSource.fromChat(Text.removeTags(event.getMessage()));
+		String name = RaidSource.fromKillCount(Text.removeTags(event.getMessage()));
 		if (name == null)
 		{
 			return;
@@ -397,7 +397,7 @@ public class NylocasPlugin extends Plugin
 		List<String> titles = new ArrayList<>();
 		for (ItemStack item : lootReceived.getItems())
 		{
-			for (String title : AllowedDrops.titles(tiles, sourceName, item.getId()))
+			for (String title : AllowedDrops.matchingTitles(tiles, sourceName, item.getId()))
 			{
 				if (!titles.contains(title))
 				{
@@ -416,7 +416,7 @@ public class NylocasPlugin extends Plugin
 	private String lootSource(String lootName)
 	{
 		String chat = raidChatName;
-		if (chat != null && System.currentTimeMillis() - raidChatAt > RaidSource.MAX_AGE_MS)
+		if (chat != null && System.currentTimeMillis() - raidChatAt > RaidSource.KILL_COUNT_MAX_AGE_MS)
 		{
 			chat = null;
 		}

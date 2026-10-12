@@ -5,7 +5,7 @@ import java.util.regex.Pattern;
 
 final class RaidSource
 {
-	static final long MAX_AGE_MS = 10 * 60 * 1000L;
+	static final long KILL_COUNT_MAX_AGE_MS = 10 * 60 * 1000L;
 
 	private static final Pattern COMPLETED = Pattern.compile("Your (?:completed|subdued) (.+) count is: [\\d,]+\\b");
 
@@ -20,7 +20,7 @@ final class RaidSource
 			|| "Tombs of Amascut".equals(lootName);
 	}
 
-	static String fromChat(String message)
+	static String fromKillCount(String message)
 	{
 		if (message == null)
 		{

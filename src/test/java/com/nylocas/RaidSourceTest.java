@@ -12,18 +12,18 @@ public class RaidSourceTest
 	@Test
 	public void readsRaidCompletion()
 	{
-		assertEquals("Chambers of Xeric Challenge Mode", RaidSource.fromChat("Your completed Chambers of Xeric Challenge Mode count is: 12."));
-		assertEquals("Theatre of Blood: Hard Mode", RaidSource.fromChat("Your completed Theatre of Blood: Hard Mode count is: 1,024."));
-		assertEquals("Tombs of Amascut: Expert Mode", RaidSource.fromChat("Your completed Tombs of Amascut: Expert Mode count is: 3."));
-		assertEquals("Tombs of Amascut: Entry Mode", RaidSource.fromChat("Your completed Tombs of Amascut: Entry Mode count is: 2."));
+		assertEquals("Chambers of Xeric Challenge Mode", RaidSource.fromKillCount("Your completed Chambers of Xeric Challenge Mode count is: 12."));
+		assertEquals("Theatre of Blood: Hard Mode", RaidSource.fromKillCount("Your completed Theatre of Blood: Hard Mode count is: 1,024."));
+		assertEquals("Tombs of Amascut: Expert Mode", RaidSource.fromKillCount("Your completed Tombs of Amascut: Expert Mode count is: 3."));
+		assertEquals("Tombs of Amascut: Entry Mode", RaidSource.fromKillCount("Your completed Tombs of Amascut: Entry Mode count is: 2."));
 	}
 
 	@Test
 	public void ignoresOtherKillCounts()
 	{
-		assertNull(RaidSource.fromChat("Your Zulrah kill count is: 50."));
-		assertNull(RaidSource.fromChat("Allowed drop: Armadyl piece"));
-		assertNull(RaidSource.fromChat(null));
+		assertNull(RaidSource.fromKillCount("Your Zulrah kill count is: 50."));
+		assertNull(RaidSource.fromKillCount("Allowed drop: Armadyl piece"));
+		assertNull(RaidSource.fromKillCount(null));
 	}
 
 	@Test
@@ -42,8 +42,8 @@ public class RaidSourceTest
 		EventTile challenge = raidTile("Chambers of Xeric Challenge Mode");
 		String source = RaidSource.resolve("Chambers of Xeric", "Chambers of Xeric Challenge Mode");
 
-		assertTrue(AllowedDrops.titles(List.of(normal), source, 20997).isEmpty());
-		assertEquals(List.of("Olmlet"), AllowedDrops.titles(List.of(challenge), source, 20997));
+		assertTrue(AllowedDrops.matchingTitles(List.of(normal), source, 20997).isEmpty());
+		assertEquals(List.of("Olmlet"), AllowedDrops.matchingTitles(List.of(challenge), source, 20997));
 	}
 
 	@Test
@@ -53,16 +53,16 @@ public class RaidSourceTest
 		EventTile expert = raidTile("Tombs of Amascut: Expert Mode");
 		String source = RaidSource.resolve("Tombs of Amascut", "Tombs of Amascut: Entry Mode");
 
-		assertTrue(AllowedDrops.titles(List.of(normal, expert), source, 27277).isEmpty());
+		assertTrue(AllowedDrops.matchingTitles(List.of(normal, expert), source, 27277).isEmpty());
 	}
 
 	private static EventTile raidTile(String lootName)
 	{
 		EventSource source = new EventSource();
-		source.name = lootName;
+		source.displayName = lootName;
 		source.runeliteNames = List.of(lootName);
 		EventItem item = new EventItem();
-		item.item = "olmlet";
+		item.key = "olmlet";
 		item.runeliteIds = List.of(20997, 27277);
 		item.sources = List.of(source);
 		EventTile tile = new EventTile();

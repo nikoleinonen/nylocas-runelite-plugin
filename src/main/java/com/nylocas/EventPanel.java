@@ -32,7 +32,7 @@ final class EventPanel extends PluginPanel
 	private static final Border SELECTED_BORDER = BorderFactory.createLineBorder(ColorScheme.TEXT_COLOR, 1);
 	private static final Color COMPLETE_COLOR = new Color(28, 92, 42);
 	private static final Color PARTIAL_COLOR = new Color(122, 78, 18);
-	private static final Color SOURCE_TEXT = new Color(160, 160, 160);
+	private static final Color MUTED_TEXT = new Color(160, 160, 160);
 	private static final Color PENDING_TEXT = new Color(214, 176, 92);
 	private static final Color PROGRESS_TEXT = new Color(126, 196, 140);
 	private static final int COOLDOWN_MS = 60_000;
@@ -43,7 +43,7 @@ final class EventPanel extends PluginPanel
 	private final JButton fetchButton = new JButton(FETCH_LABEL);
 	private final JLabel status = new JLabel(" ");
 	private final JPanel gridHost = new JPanel();
-	private final JPanel drops = new JPanel();
+	private final JPanel detail = new JPanel();
 	private final Map<JPanel, EventTile> cells = new HashMap<>();
 	private Map<Integer, String> itemNames = Map.of();
 	private Map<Integer, AsyncBufferedImage> itemImages = Map.of();
@@ -76,10 +76,10 @@ final class EventPanel extends PluginPanel
 		gridHost.setBorder(new EmptyBorder(8, 0, 0, 0));
 		add(gridHost);
 
-		drops.setLayout(new BoxLayout(drops, BoxLayout.Y_AXIS));
-		drops.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		drops.setBorder(new EmptyBorder(8, 0, 0, 0));
-		add(drops);
+		detail.setLayout(new BoxLayout(detail, BoxLayout.Y_AXIS));
+		detail.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		detail.setBorder(new EmptyBorder(8, 0, 0, 0));
+		add(detail);
 
 		fetchButton.setEnabled(false);
 		fetchButton.addActionListener(event -> fetch());
@@ -222,12 +222,12 @@ final class EventPanel extends PluginPanel
 		selectedCell = null;
 		cells.clear();
 		gridHost.removeAll();
-		drops.removeAll();
+		detail.removeAll();
 		int rows = board == null ? 0 : board.rows;
 		int cols = board == null ? 0 : board.cols;
 		if (rows <= 0 || cols <= 0)
 		{
-			drops.add(wrappingLabel("No board on this event", false));
+			detail.add(wrappingLabel("No board on this event", false));
 		}
 		else
 		{
@@ -254,12 +254,12 @@ final class EventPanel extends PluginPanel
 				}
 			}
 			gridHost.add(grid);
-			drops.add(wrappingLabel("Select a tile", false));
+			detail.add(wrappingLabel("Select a tile", false));
 		}
 		gridHost.revalidate();
 		gridHost.repaint();
-		drops.revalidate();
-		drops.repaint();
+		detail.revalidate();
+		detail.repaint();
 		revalidate();
 		repaint();
 		refreshButton();
@@ -292,12 +292,12 @@ final class EventPanel extends PluginPanel
 		return cell;
 	}
 
-	private JPanel lockedCell(boolean missing)
+	private JPanel lockedCell(boolean empty)
 	{
 		JPanel cell = new JPanel(new GridLayout(1, 1));
 		cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		cell.setBorder(CELL_BORDER);
-		cell.setToolTipText(missing ? "Empty" : "Locked");
+		cell.setToolTipText(empty ? "Empty" : "Locked");
 		return cell;
 	}
 
@@ -310,20 +310,20 @@ final class EventPanel extends PluginPanel
 		selectedCell = cell;
 		cell.setBorder(SELECTED_BORDER);
 		EventTile tile = cells.get(cell);
-		drops.removeAll();
+		detail.removeAll();
 		if (tile == null)
 		{
-			drops.revalidate();
-			drops.repaint();
+			detail.revalidate();
+			detail.repaint();
 			return;
 		}
-		drops.add(wrappingLabel(tileTitle(tile), true));
-		drops.add(statusLabel(tile));
-		String requirement = AllowedDrops.requirement(tile);
+		detail.add(wrappingLabel(TileText.tileTitle(tile), true));
+		detail.add(statusLabel(tile));
+		String requirement = TileText.requirement(tile);
 		if (!requirement.isEmpty())
 		{
-			drops.add(Box.createVerticalStrut(6));
-			drops.add(wrappingLabel(requirement, false));
+			detail.add(Box.createVerticalStrut(6));
+			detail.add(wrappingLabel(requirement, false));
 		}
 		if (tile.items != null)
 		{
@@ -333,12 +333,12 @@ final class EventPanel extends PluginPanel
 				{
 					continue;
 				}
-				drops.add(Box.createVerticalStrut(4));
-				drops.add(itemCard(tile, item));
+				detail.add(Box.createVerticalStrut(4));
+				detail.add(itemCard(tile, item));
 			}
 		}
-		drops.revalidate();
-		drops.repaint();
+		detail.revalidate();
+		detail.repaint();
 		revalidate();
 		repaint();
 	}
@@ -350,11 +350,11 @@ final class EventPanel extends PluginPanel
 		itemNames = Map.of();
 		itemImages = Map.of();
 		gridHost.removeAll();
-		drops.removeAll();
+		detail.removeAll();
 		gridHost.revalidate();
 		gridHost.repaint();
-		drops.revalidate();
-		drops.repaint();
+		detail.revalidate();
+		detail.repaint();
 	}
 
 	private static String teamLabel(EventBoard board)
@@ -395,18 +395,9 @@ final class EventPanel extends PluginPanel
 		return ColorScheme.MEDIUM_GRAY_COLOR;
 	}
 
-	private static String tileTitle(EventTile tile)
-	{
-		if (tile.title == null || tile.title.isEmpty())
-		{
-			return "Tile " + tile.id;
-		}
-		return tile.title;
-	}
-
 	private JPanel itemCard(EventTile tile, EventItem item)
 	{
-		String bosses = bossTip(item);
+		String tip = sourceTip(item);
 		JPanel card = new FitWidth(new BorderLayout(6, 0));
 		card.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		card.setBorder(BorderFactory.createCompoundBorder(
@@ -414,7 +405,7 @@ final class EventPanel extends PluginPanel
 			new EmptyBorder(4, 4, 4, 6)
 		));
 		card.setAlignmentX(LEFT_ALIGNMENT);
-		hover(card, bosses);
+		hover(card, tip);
 
 		Integer itemId = firstId(item.runeliteIds);
 		JLabel icon = new JLabel();
@@ -426,27 +417,27 @@ final class EventPanel extends PluginPanel
 		{
 			image.addTo(icon);
 		}
-		hover(icon, bosses);
+		hover(icon, tip);
 		card.add(icon, BorderLayout.WEST);
 
-		JLabel name = new JLabel(itemLabel(item, itemId));
+		JLabel name = new JLabel(TileText.itemName(item, id -> itemNames.get(id)));
 		name.setVerticalAlignment(JLabel.CENTER);
 		name.setForeground(ColorScheme.TEXT_COLOR);
-		hover(name, bosses);
+		hover(name, tip);
 		card.add(name, BorderLayout.CENTER);
 
 		JPanel count = countColumn(tile, item);
-		hover(count, bosses);
+		hover(count, tip);
 		card.add(count, BorderLayout.EAST);
 		return card;
 	}
 
 	private JPanel countColumn(EventTile tile, EventItem item)
 	{
-		JLabel count = new JLabel(AllowedDrops.itemFraction(tile, item));
+		JLabel count = new JLabel(TileText.itemFraction(tile, item));
 		count.setForeground(fractionColor(item));
 		count.setHorizontalAlignment(JLabel.RIGHT);
-		String pending = AllowedDrops.pendingText(item);
+		String pending = TileText.pendingText(item);
 		if (pending.isEmpty())
 		{
 			count.setBorder(new EmptyBorder(0, 4, 0, 0));
@@ -455,23 +446,23 @@ final class EventPanel extends PluginPanel
 			holder.add(count, BorderLayout.CENTER);
 			return holder;
 		}
-		JLabel waiting = new JLabel(pending);
-		waiting.setForeground(PENDING_TEXT);
-		waiting.setHorizontalAlignment(JLabel.RIGHT);
+		JLabel pendingLabel = new JLabel(pending);
+		pendingLabel.setForeground(PENDING_TEXT);
+		pendingLabel.setHorizontalAlignment(JLabel.RIGHT);
 		JPanel column = new JPanel();
 		column.setLayout(new BoxLayout(column, BoxLayout.Y_AXIS));
 		column.setOpaque(false);
 		column.setBorder(new EmptyBorder(0, 4, 0, 0));
 		count.setAlignmentX(RIGHT_ALIGNMENT);
-		waiting.setAlignmentX(RIGHT_ALIGNMENT);
+		pendingLabel.setAlignmentX(RIGHT_ALIGNMENT);
 		column.add(count);
-		column.add(waiting);
+		column.add(pendingLabel);
 		return column;
 	}
 
-	private static String bossTip(EventItem item)
+	private static String sourceTip(EventItem item)
 	{
-		String sources = AllowedDrops.sourcesText(item);
+		String sources = TileText.sourcesText(item);
 		if (sources.isEmpty())
 		{
 			return "";
@@ -500,12 +491,12 @@ final class EventPanel extends PluginPanel
 		{
 			return PROGRESS_TEXT;
 		}
-		return SOURCE_TEXT;
+		return MUTED_TEXT;
 	}
 
 	private static JLabel statusLabel(EventTile tile)
 	{
-		String progress = AllowedDrops.progress(tile);
+		String progress = TileText.progress(tile);
 		String html = "<span style='color: " + statusColor(tile) + "'>" + escape(statusText(tile)) + "</span>";
 		if (!progress.isEmpty())
 		{
@@ -531,12 +522,12 @@ final class EventPanel extends PluginPanel
 
 	private static String tileTooltip(EventTile tile)
 	{
-		String progress = AllowedDrops.progress(tile);
+		String progress = TileText.progress(tile);
 		if (progress.isEmpty())
 		{
-			return tileTitle(tile) + " - " + statusText(tile);
+			return TileText.tileTitle(tile) + " - " + statusText(tile);
 		}
-		return tileTitle(tile) + " - " + progress + " " + statusText(tile);
+		return TileText.tileTitle(tile) + " - " + progress + " " + statusText(tile);
 	}
 
 	private static final class FitWidth extends JPanel
@@ -554,24 +545,6 @@ final class EventPanel extends PluginPanel
 			size.width = Integer.MAX_VALUE;
 			return size;
 		}
-	}
-
-	private String itemLabel(EventItem item, Integer itemId)
-	{
-		if (itemId != null)
-		{
-			String name = itemNames.get(itemId);
-			if (name != null && !name.isEmpty())
-			{
-				return name;
-			}
-		}
-		if (item.item == null || item.item.isEmpty())
-		{
-			return "Unknown item";
-		}
-		String spaced = item.item.replace('_', ' ');
-		return Character.toUpperCase(spaced.charAt(0)) + spaced.substring(1);
 	}
 
 	private AsyncBufferedImage itemImage(Integer itemId)
