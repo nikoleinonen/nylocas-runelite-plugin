@@ -4,6 +4,7 @@ import java.util.List;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class AllowedDropsTest
@@ -28,6 +29,19 @@ public class AllowedDropsTest
 	public void seedFromAnotherSource()
 	{
 		assertTrue(AllowedDrops.matchingTitles(List.of(seedTile()), "Goblin", 4207).isEmpty());
+	}
+
+	@Test
+	public void anyKillFromAnAllowedSource()
+	{
+		List<EventTile> tiles = List.of(seedTile());
+
+		assertTrue(AllowedDrops.allowsSource(tiles, "Crystalline Hunllef"));
+		assertTrue(AllowedDrops.allowsSource(tiles, "Corrupted Hunllef"));
+		assertFalse(AllowedDrops.allowsSource(tiles, "The Gauntlet"));
+		assertFalse(AllowedDrops.allowsSource(tiles, "Goblin"));
+		assertFalse(AllowedDrops.allowsSource(tiles, null));
+		assertFalse(AllowedDrops.allowsSource(null, "Crystalline Hunllef"));
 	}
 
 	private static EventTile seedTile()

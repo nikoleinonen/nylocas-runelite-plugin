@@ -356,26 +356,28 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
+		if (!AllowedDrops.allowsSource(tiles, sourceName))
+		{
+			return;
+		}
+		List<String> names = new ArrayList<>();
 		for (ItemStack item : lootReceived.getItems())
 		{
-			if (AllowedDrops.matchingTitles(tiles, sourceName, item.getId()).isEmpty())
-			{
-				continue;
-			}
 			String name = itemName(item.getId());
-			if (name == null)
-			{
-				name = Integer.toString(item.getId());
-			}
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", receivedMessage(name, sourceName), null);
-			log.debug("Allowed drop {} from {}", name, sourceName);
+			names.add(name == null ? Integer.toString(item.getId()) : name);
 		}
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", completedSourceMessage(sourceName, names), null);
+		log.debug("Allowed source {} dropped {}", sourceName, names);
 	}
 
-	private static String receivedMessage(String item, String source)
+	private static String completedSourceMessage(String source, List<String> items)
 	{
-		return "received: " + ColorUtil.wrapWithColorTag(item, Color.RED)
-			+ ", from: " + ColorUtil.wrapWithColorTag(source, Color.RED);
+		String message = "Completed allowed source: " + ColorUtil.wrapWithColorTag(source, Color.RED);
+		if (!items.isEmpty())
+		{
+			message += ", item: " + ColorUtil.wrapWithColorTag(String.join(", ", items), Color.RED);
+		}
+		return message;
 	}
 
 	private String lootSource(String lootName)

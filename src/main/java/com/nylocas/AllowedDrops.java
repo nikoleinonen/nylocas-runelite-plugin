@@ -9,6 +9,29 @@ final class AllowedDrops
 	{
 	}
 
+	static boolean allowsSource(List<EventTile> tiles, String sourceName)
+	{
+		if (tiles == null || sourceName == null)
+		{
+			return false;
+		}
+		for (EventTile tile : tiles)
+		{
+			if (tile == null || tile.items == null)
+			{
+				continue;
+			}
+			for (EventItem item : tile.items)
+			{
+				if (item != null && hasSource(item, sourceName))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	static List<String> matchingTitles(List<EventTile> tiles, String sourceName, int itemId)
 	{
 		List<String> titles = new ArrayList<>();
