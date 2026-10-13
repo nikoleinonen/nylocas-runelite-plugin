@@ -3,14 +3,22 @@ package com.nylocas;
 import com.google.gson.Gson;
 import com.google.inject.Provides;
 import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
+import javax.imageio.ImageIO;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +35,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.client.ui.ClientToolbar;
+import net.runelite.client.ui.DrawManager;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ColorUtil;
@@ -35,8 +44,11 @@ import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 
 @Slf4j
@@ -49,6 +61,8 @@ public class NylocasPlugin extends Plugin
 {
 	static final String API_BASE = "http://127.0.0.1:8080";
 	private static final String TEAM_KEY_FILE = "team-key";
+	private static final String PROOF_FAILED = "Failed to submit proof automatically. Please submit it manually.";
+	private static final Color PROOF_SENT = new Color(0x10b981);
 
 	@Inject
 	private Client client;
@@ -58,6 +72,9 @@ public class NylocasPlugin extends Plugin
 
 	@Inject
 	private ClientToolbar clientToolbar;
+
+	@Inject
+	private DrawManager drawManager;
 
 	@Inject
 	private ItemManager itemManager;
@@ -82,7 +99,11 @@ public class NylocasPlugin extends Plugin
 	private volatile EventPanel panel;
 	private Call fetchCall;
 	private volatile boolean running;
+	private static final DateTimeFormatter SHOT_STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss_SSS").withZone(ZoneId.systemDefault());
+
 	private volatile List<EventTile> tiles = List.of();
+	private volatile List<EventPlayer> players = List.of();
+	private volatile String eventName = "";
 	private String raidChatName;
 	private long raidChatAt;
 
@@ -119,6 +140,8 @@ public class NylocasPlugin extends Plugin
 			fetchCall = null;
 		}
 		tiles = List.of();
+		players = List.of();
+		eventName = "";
 		raidChatName = null;
 		EventPanel current = panel;
 		panel = null;
@@ -285,6 +308,8 @@ public class NylocasPlugin extends Plugin
 						}
 					}
 					tiles = List.copyOf(next);
+					players = copyPlayers(board);
+					eventName = board == null || board.eventName == null ? "" : board.eventName;
 					EventBoard loaded = board;
 					clientThread.invoke(() ->
 					{
@@ -368,6 +393,307 @@ public class NylocasPlugin extends Plugin
 		}
 		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", completedSourceMessage(sourceName, names), null);
 		log.debug("Allowed source {} dropped {}", sourceName, names);
+		List<EventTile> board = tiles;
+		List<EventPlayer> roster = players;
+		String name = eventName;
+		List<String> labels = dropLabels(board, sourceName, lootReceived.getItems());
+		if (labels.isEmpty())
+		{
+			return;
+		}
+		boolean send = config.submitProofs() && config.connect();
+		List<AllowedDrops.ProofTarget> uploads = List.of();
+		String key = "";
+		long playerId = 0;
+		if (send)
+		{
+			uploads = proofTargets(board, sourceName, lootReceived.getItems());
+			key = teamKey();
+			playerId = AllowedDrops.playerId(roster, localPlayerName());
+			if (key.isEmpty() || playerId == 0)
+			{
+				releaseProofs(uploads);
+				proofFailed();
+				uploads = List.of();
+				send = false;
+			}
+		}
+		boolean upload = send;
+		List<AllowedDrops.ProofTarget> toSend = uploads;
+		String teamKey = key;
+		long player = playerId;
+		drawManager.requestNextFrameListener(image ->
+		{
+			BufferedImage shot = copyFrame(image);
+			executor.execute(() -> keepScreenshot(shot, name, labels, upload, toSend, player, teamKey));
+		});
+	}
+
+	private List<String> dropLabels(List<EventTile> board, String sourceName, Collection<ItemStack> stacks)
+	{
+		List<String> labels = new ArrayList<>();
+		for (ItemStack stack : stacks)
+		{
+			if (AllowedDrops.firstProof(board, sourceName, stack.getId()) == null)
+			{
+				continue;
+			}
+			String name = itemName(stack.getId());
+			if (name == null)
+			{
+				name = Integer.toString(stack.getId());
+			}
+			if (!labels.contains(name))
+			{
+				labels.add(name);
+			}
+		}
+		return labels;
+	}
+
+	private List<AllowedDrops.ProofTarget> proofTargets(List<EventTile> board, String sourceName, Collection<ItemStack> stacks)
+	{
+		List<AllowedDrops.ProofTarget> targets = new ArrayList<>();
+		for (ItemStack stack : stacks)
+		{
+			AllowedDrops.ProofTarget target = AllowedDrops.firstProof(board, sourceName, stack.getId());
+			if (target == null)
+			{
+				continue;
+			}
+			target.item.pending++;
+			String name = itemName(stack.getId());
+			target.itemName = name == null ? Integer.toString(stack.getId()) : name;
+			targets.add(target);
+		}
+		return targets;
+	}
+
+	private void keepScreenshot(BufferedImage shot, String eventName, List<String> labels, boolean send, List<AllowedDrops.ProofTarget> targets, long playerId, String key)
+	{
+		if (!running || shot == null)
+		{
+			if (send)
+			{
+				releaseProofs(targets);
+				if (running)
+				{
+					proofFailed();
+				}
+			}
+			return;
+		}
+		byte[] png;
+		try
+		{
+			png = writePng(shot);
+		}
+		catch (IOException ex)
+		{
+			log.warn("Could not encode proof", ex);
+			if (send)
+			{
+				releaseProofs(targets);
+				proofFailed();
+			}
+			else
+			{
+				chat(ColorUtil.wrapWithColorTag("Could not save screenshot", Color.RED));
+			}
+			return;
+		}
+		boolean saved = saveScreenshot(png, eventName, labels);
+		if (!send)
+		{
+			if (saved)
+			{
+				chat("Saved screenshot");
+			}
+			else
+			{
+				chat(ColorUtil.wrapWithColorTag("Could not save screenshot", Color.RED));
+			}
+			return;
+		}
+		for (AllowedDrops.ProofTarget target : targets)
+		{
+			if (!running)
+			{
+				release(target);
+				continue;
+			}
+			if (!postProof(png, target, playerId, key))
+			{
+				release(target);
+				proofFailed();
+				continue;
+			}
+			String label = target.tile.title;
+			if (label == null || label.isEmpty())
+			{
+				label = target.itemName;
+			}
+			chat("Sent proof: " + ColorUtil.wrapWithColorTag(label, PROOF_SENT));
+		}
+	}
+
+	private boolean saveScreenshot(byte[] png, String eventName, List<String> labels)
+	{
+		try
+		{
+			String stamp = SHOT_STAMP.format(Instant.now());
+			Filepath folder = getPluginDirectory().joinSegment(ScreenshotFiles.folderName(eventName));
+			folder.createDirectories();
+			String fileName = ScreenshotFiles.fileName(stamp, labels);
+			Filepath file = folder.joinSegment(fileName);
+			int suffix = 2;
+			String stem = fileName.endsWith(".png") ? fileName.substring(0, fileName.length() - 4) : fileName;
+			while (file.exists())
+			{
+				file = folder.joinSegment(stem + "-" + suffix + ".png");
+				suffix++;
+			}
+			file.write(png);
+			return true;
+		}
+		catch (IOException | RuntimeException ex)
+		{
+			log.warn("Could not save screenshot", ex);
+			return false;
+		}
+	}
+
+	private boolean postProof(byte[] png, AllowedDrops.ProofTarget target, long playerId, String key)
+	{
+		RequestBody file = RequestBody.create(MediaType.parse("image/png"), png);
+		RequestBody body = new MultipartBody.Builder()
+			.setType(MultipartBody.FORM)
+			.addFormDataPart("tile_id", Long.toString(target.tile.id))
+			.addFormDataPart("player_id", Long.toString(playerId))
+			.addFormDataPart("item", target.item.key)
+			.addFormDataPart("source", target.sourceId)
+			.addFormDataPart("file", "proof.png", file)
+			.build();
+		Request request = new Request.Builder()
+			.url(API_BASE + "/team/submissions")
+			.header("Authorization", "Bearer " + key)
+			.post(body)
+			.build();
+		try (Response response = okHttpClient.newCall(request).execute())
+		{
+			if (response.isSuccessful())
+			{
+				return true;
+			}
+			String responseBody = response.body() == null ? "" : response.body().string();
+			log.debug("Proof rejected {} {}", response.code(), responseBody);
+			return false;
+		}
+		catch (IOException ex)
+		{
+			log.debug("Proof upload failed", ex);
+			return false;
+		}
+	}
+
+	private void releaseProofs(List<AllowedDrops.ProofTarget> targets)
+	{
+		for (AllowedDrops.ProofTarget target : targets)
+		{
+			release(target);
+		}
+	}
+
+	private void release(AllowedDrops.ProofTarget target)
+	{
+		Runnable undo = () ->
+		{
+			if (target.item.pending > 0)
+			{
+				target.item.pending--;
+			}
+		};
+		if (client.isClientThread())
+		{
+			undo.run();
+			return;
+		}
+		clientThread.invoke(undo);
+	}
+
+	private void proofFailed()
+	{
+		chat(ColorUtil.wrapWithColorTag(PROOF_FAILED, Color.RED));
+	}
+
+	private void chat(String message)
+	{
+		if (!running)
+		{
+			return;
+		}
+		clientThread.invoke(() ->
+		{
+			if (running)
+			{
+				client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", message, null);
+			}
+		});
+	}
+
+	private String localPlayerName()
+	{
+		if (client.getLocalPlayer() == null)
+		{
+			return null;
+		}
+		return client.getLocalPlayer().getName();
+	}
+
+	private static List<EventPlayer> copyPlayers(EventBoard board)
+	{
+		if (board == null || board.players == null)
+		{
+			return List.of();
+		}
+		List<EventPlayer> copy = new ArrayList<>();
+		for (EventPlayer player : board.players)
+		{
+			if (player != null)
+			{
+				copy.add(player);
+			}
+		}
+		return List.copyOf(copy);
+	}
+
+	private static BufferedImage copyFrame(Image image)
+	{
+		if (image == null)
+		{
+			return null;
+		}
+		int width = image.getWidth(null);
+		int height = image.getHeight(null);
+		if (width <= 0 || height <= 0)
+		{
+			return null;
+		}
+		BufferedImage copy = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+		Graphics2D graphics = copy.createGraphics();
+		graphics.drawImage(image, 0, 0, null);
+		graphics.dispose();
+		return copy;
+	}
+
+	private static byte[] writePng(BufferedImage image) throws IOException
+	{
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		if (!ImageIO.write(image, "png", out))
+		{
+			throw new IOException("png writer missing");
+		}
+		return out.toByteArray();
 	}
 
 	private static String completedSourceMessage(String source, List<String> items)

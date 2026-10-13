@@ -13,7 +13,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "connect",
 		name = "Connect to nylocas.com",
-		description = "Load your team's event from nylocas.com",
+		description = "Allow the client to communicate with the nylocas.com backend to retrieve information and automatically submit proof.",
 		warning = "This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers"
 	)
 	default boolean connect()
@@ -30,5 +30,15 @@ public interface NylocasConfig extends Config
 	default String teamKey()
 	{
 		return "";
+	}
+
+	@ConfigItem(
+		keyName = "submitProofs",
+		name = "Automatically send proof image",
+		description = "Send a screenshot when you get a drop for an event tile"
+	)
+	default boolean submitProofs()
+	{
+		return true;
 	}
 }

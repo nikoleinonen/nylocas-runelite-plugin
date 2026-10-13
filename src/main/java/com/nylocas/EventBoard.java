@@ -11,12 +11,23 @@ final class EventBoard
 	@SerializedName("team_name")
 	String teamName;
 
+	@SerializedName("event_name")
+	String eventName;
+
 	String rank;
 
 	@SerializedName("open_row")
 	int openRow;
 
+	List<EventPlayer> players;
+
 	List<EventTile> tiles;
+}
+
+final class EventPlayer
+{
+	long id;
+	String name;
 }
 
 final class EventTile
@@ -49,6 +60,8 @@ final class EventItem
 
 final class EventSource
 {
+	String id;
+
 	@SerializedName("name")
 	String displayName;
 
