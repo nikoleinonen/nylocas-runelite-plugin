@@ -28,6 +28,7 @@ import net.runelite.client.plugins.loottracker.LootReceived;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.DrawManager;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Filepath;
 import net.runelite.client.util.ImageUtil;
@@ -55,6 +56,9 @@ public class NylocasPlugin extends Plugin
 	private ClientToolbar clientToolbar;
 
 	@Inject
+	private OverlayManager overlayManager;
+
+	@Inject
 	private DrawManager drawManager;
 
 	@Inject
@@ -77,6 +81,7 @@ public class NylocasPlugin extends Plugin
 
 	private final Object keyFileLock = new Object();
 	private NavigationButton navButton;
+	private EventPasswordOverlay overlay;
 	private volatile EventPanel panel;
 	private volatile boolean running;
 	private EventBoardClient board;
@@ -98,6 +103,8 @@ public class NylocasPlugin extends Plugin
 		proofs = new ProofUploader(client, clientThread, drawManager, executor, okHttpClient);
 		board.start();
 		proofs.start();
+		overlay = new EventPasswordOverlay(config, this);
+		overlayManager.add(overlay);
 		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "sidebar.png");
 		panel = new EventPanel(this);
 		navButton = NavigationButton.builder()
@@ -115,6 +122,11 @@ public class NylocasPlugin extends Plugin
 	protected void shutDown() throws Exception
 	{
 		running = false;
+		if (overlay != null)
+		{
+			overlayManager.remove(overlay);
+			overlay = null;
+		}
 		if (board != null)
 		{
 			board.stop();
@@ -142,6 +154,24 @@ public class NylocasPlugin extends Plugin
 	{
 		String key = config.teamKey();
 		return key == null ? "" : key.trim();
+	}
+
+	String eventPassword()
+	{
+		EventBoardClient current = board;
+		return current == null ? "" : current.eventPassword();
+	}
+
+	boolean eventLoaded()
+	{
+		EventBoardClient current = board;
+		return current != null && current.eventLoaded();
+	}
+
+	boolean eventStarted()
+	{
+		EventBoardClient current = board;
+		return current != null && current.eventStarted();
 	}
 
 	@Subscribe

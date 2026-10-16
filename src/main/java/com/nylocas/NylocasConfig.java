@@ -1,5 +1,7 @@
 package com.nylocas;
 
+import java.awt.Color;
+
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
@@ -50,5 +52,35 @@ public interface NylocasConfig extends Config
 	default boolean saveProofs()
 	{
 		return true;
+	}
+
+	@ConfigItem(
+		keyName = "displayOverlay",
+		name = "Display overlay",
+		description = "Show the event password and the current UTC time on the game screen"
+	)
+	default boolean displayOverlay()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "passwordColor",
+		name = "Password color",
+		description = "Color of the event password"
+	)
+	default Color passwordColor()
+	{
+		return Color.GREEN;
+	}
+
+	@ConfigItem(
+		keyName = "timeColor",
+		name = "Time color",
+		description = "Color of the UTC time"
+	)
+	default Color timeColor()
+	{
+		return Color.WHITE;
 	}
 }

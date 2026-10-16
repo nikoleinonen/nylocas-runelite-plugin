@@ -14,6 +14,12 @@ final class EventBoard
 	@SerializedName("event_name")
 	String eventName;
 
+	@SerializedName("event_password")
+	String eventPassword;
+
+	@SerializedName("event_started")
+	boolean eventStarted;
+
 	String rank;
 
 	@SerializedName("open_row")

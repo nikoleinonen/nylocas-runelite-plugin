@@ -46,6 +46,9 @@ final class EventBoardClient
 	private volatile List<EventTile> tiles = List.of();
 	private volatile List<EventPlayer> players = List.of();
 	private volatile String eventName = "";
+	private volatile String eventPassword = "";
+	private volatile boolean eventLoaded;
+	private volatile boolean eventStarted;
 
 	EventBoardClient(OkHttpClient okHttpClient, Gson gson, ClientThread clientThread, ItemManager itemManager)
 	{
@@ -74,6 +77,9 @@ final class EventBoardClient
 		tiles = List.of();
 		players = List.of();
 		eventName = "";
+		eventPassword = "";
+		eventLoaded = false;
+		eventStarted = false;
 	}
 
 	List<EventTile> tiles()
@@ -89,6 +95,21 @@ final class EventBoardClient
 	String eventName()
 	{
 		return eventName;
+	}
+
+	String eventPassword()
+	{
+		return eventPassword;
+	}
+
+	boolean eventLoaded()
+	{
+		return eventLoaded;
+	}
+
+	boolean eventStarted()
+	{
+		return eventStarted;
 	}
 
 	String itemName(int id)
@@ -173,11 +194,17 @@ final class EventBoardClient
 					tiles = NylocasPlugin.copyTiles(next);
 					players = copyPlayers(board);
 					eventName = board == null || board.eventName == null ? "" : board.eventName;
+					eventPassword = passwordOf(board);
+					eventStarted = board != null && board.eventStarted;
+					eventLoaded = true;
 					if (!running)
 					{
 						tiles = List.of();
 						players = List.of();
 						eventName = "";
+						eventPassword = "";
+						eventLoaded = false;
+						eventStarted = false;
 						return;
 					}
 					if (ticket != generation.get())
@@ -482,6 +509,15 @@ final class EventBoardClient
 		{
 		}
 		return "Could not fetch event";
+	}
+
+	private static String passwordOf(EventBoard board)
+	{
+		if (board == null || board.eventPassword == null)
+		{
+			return "";
+		}
+		return board.eventPassword.trim();
 	}
 
 	private static List<EventPlayer> copyPlayers(EventBoard board)
