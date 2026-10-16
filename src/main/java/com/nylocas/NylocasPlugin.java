@@ -424,6 +424,7 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
+		boolean saveLocally = config.saveProofs();
 		boolean uploadProofs = config.submitProofs() && config.connect();
 		List<AllowedDrops.ProofTarget> proofs = List.of();
 		String proofKey = "";
@@ -441,15 +442,19 @@ public class NylocasPlugin extends Plugin
 				uploadProofs = false;
 			}
 		}
-		captureDrop(eventName, labels, uploadProofs, proofs, proofPlayerId, proofKey);
+		if (!saveLocally && !uploadProofs)
+		{
+			return;
+		}
+		captureDrop(eventName, labels, saveLocally, uploadProofs, proofs, proofPlayerId, proofKey);
 	}
 
-	private void captureDrop(String eventName, List<String> labels, boolean uploadProofs, List<AllowedDrops.ProofTarget> proofs, long playerId, String proofKey)
+	private void captureDrop(String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<AllowedDrops.ProofTarget> proofs, long playerId, String proofKey)
 	{
 		drawManager.requestNextFrameListener(image ->
 		{
 			BufferedImage shot = copyFrame(image);
-			executor.execute(() -> saveAndUploadScreenshot(shot, eventName, labels, uploadProofs, proofs, playerId, proofKey));
+			executor.execute(() -> saveAndUploadScreenshot(shot, eventName, labels, saveLocally, uploadProofs, proofs, playerId, proofKey));
 		});
 	}
 
@@ -494,7 +499,7 @@ public class NylocasPlugin extends Plugin
 		return targets;
 	}
 
-	private void saveAndUploadScreenshot(BufferedImage shot, String eventName, List<String> labels, boolean uploadProofs, List<AllowedDrops.ProofTarget> targets, long playerId, String key)
+	private void saveAndUploadScreenshot(BufferedImage shot, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<AllowedDrops.ProofTarget> targets, long playerId, String key)
 	{
 		if (!running || shot == null)
 		{
@@ -527,18 +532,21 @@ public class NylocasPlugin extends Plugin
 			}
 			return;
 		}
-		boolean saved = saveScreenshot(png, eventName, labels);
-		if (!uploadProofs)
+		if (saveLocally)
 		{
-			if (saved)
+			boolean saved = saveScreenshot(png, eventName, labels);
+			if (!uploadProofs)
 			{
-				postGameMessage("Saved screenshot");
+				if (saved)
+				{
+					postGameMessage("Saved screenshot");
+				}
+				else
+				{
+					postGameMessage(ColorUtil.wrapWithColorTag("Could not save screenshot", Color.RED));
+				}
+				return;
 			}
-			else
-			{
-				postGameMessage(ColorUtil.wrapWithColorTag("Could not save screenshot", Color.RED));
-			}
-			return;
 		}
 		for (AllowedDrops.ProofTarget target : targets)
 		{

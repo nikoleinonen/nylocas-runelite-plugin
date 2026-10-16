@@ -24,7 +24,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = TEAM_KEY,
 		name = "Team key",
-		description = "Your team's key",
+		description = "Your team's event key",
 		secret = true
 	)
 	default String teamKey()
@@ -38,6 +38,16 @@ public interface NylocasConfig extends Config
 		description = "Send a screenshot when you get a drop for an event tile"
 	)
 	default boolean submitProofs()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "saveProofs",
+		name = "Save proof image locally",
+		description = "Store a screenshot when you get a drop for an event tile"
+	)
+	default boolean saveProofs()
 	{
 		return true;
 	}
