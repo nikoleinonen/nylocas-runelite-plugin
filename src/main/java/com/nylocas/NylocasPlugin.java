@@ -575,7 +575,7 @@ public class NylocasPlugin extends Plugin
 			.addFormDataPart("file", "proof.png", file)
 			.build();
 		Request request = new Request.Builder()
-			.url(API_BASE + "/team/submissions")
+			.url(API_BASE + "/plugin/proof")
 			.header("Authorization", "Bearer " + key)
 			.post(body)
 			.build();
