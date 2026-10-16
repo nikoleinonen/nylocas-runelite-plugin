@@ -377,6 +377,10 @@ public class NylocasPlugin extends Plugin
 		copy.row = tile.row;
 		copy.col = tile.col;
 		copy.title = tile.title;
+		copy.iconItem = tile.iconItem;
+		copy.imageUrl = tile.imageUrl;
+		copy.imageFit = tile.imageFit;
+		copy.iconCount = tile.iconCount;
 		copy.complete = tile.complete;
 		copy.partial = tile.partial;
 		copy.need = tile.need;

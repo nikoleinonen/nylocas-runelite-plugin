@@ -10,7 +10,6 @@ import java.awt.Insets;
 import java.awt.LayoutManager;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import java.awt.event.HierarchyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
@@ -25,10 +24,8 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JToolTip;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.Timer;
-import javax.swing.ToolTipManager;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.ui.ColorScheme;
@@ -76,39 +73,12 @@ final class EventPanel extends PluginPanel
 	private final JButton refreshButton = new JButton()
 	{
 		@Override
-		public String getToolTipText()
+		public boolean contains(int x, int y)
 		{
-			return refreshTooltip();
-		}
-
-		@Override
-		public JToolTip createToolTip()
-		{
-			JToolTip tip = super.createToolTip();
-			watchRefreshTip(tip);
-			return tip;
+			return isEnabled() && super.contains(x, y);
 		}
 	};
-	// A disabled button does not receive mouse events, so the cooldown tooltip is also on this host.
-	private final JPanel refreshHost = new JPanel(new BorderLayout())
-	{
-		@Override
-		public String getToolTipText()
-		{
-			return refreshTooltip();
-		}
-
-		@Override
-		public JToolTip createToolTip()
-		{
-			JToolTip tip = super.createToolTip();
-			watchRefreshTip(tip);
-			return tip;
-		}
-	};
-	private JToolTip refreshTip;
-	private Timer refreshTipTimer;
-	private int savedDismissDelay = -1;
+	private final JPanel refreshHost = new JPanel(new BorderLayout());
 	private final JLabel status = new ShrinkLabel(" ");
 	private final JLabel rank = new JLabel();
 	private final JPanel statusRow = new ShrinkWidth(new BorderLayout(8, 0));
@@ -117,6 +87,7 @@ final class EventPanel extends PluginPanel
 	private final Map<JPanel, EventTile> cells = new HashMap<>();
 	private Map<Integer, String> itemNames = Map.of();
 	private Map<Integer, AsyncBufferedImage> itemImages = Map.of();
+	private Map<Long, TileIcons.Picture> pictures = Map.of();
 	private JPanel selectedCell;
 	private boolean fetching;
 	private boolean fetched;
@@ -139,7 +110,6 @@ final class EventPanel extends PluginPanel
 
 		BufferedImage icon = ImageUtil.resizeImage(ImageUtil.loadImageResource(getClass(), "refresh.png"), REFRESH_ICON, REFRESH_ICON);
 		refreshButton.setIcon(new ImageIcon(icon));
-		refreshButton.setToolTipText("Fetch event");
 		refreshButton.setFocusable(false);
 		refreshButton.setOpaque(false);
 		refreshButton.setContentAreaFilled(false);
@@ -147,7 +117,6 @@ final class EventPanel extends PluginPanel
 		refreshButton.putClientProperty("FlatLaf.style", ICON_STYLE);
 		refreshButton.addActionListener(event -> fetch());
 		refreshHost.setOpaque(false);
-		refreshHost.setToolTipText("Fetch event");
 		refreshHost.add(refreshButton);
 
 		JPanel titleWrap = new JPanel(new BorderLayout());
@@ -280,7 +249,6 @@ final class EventPanel extends PluginPanel
 		{
 			cooldownTimer.stop();
 		}
-		clearRefreshTip();
 	}
 
 	private void startCooldown()
@@ -318,7 +286,7 @@ final class EventPanel extends PluginPanel
 		refreshButton();
 	}
 
-	void showBoard(EventBoard board, Map<Integer, String> names, Map<Integer, AsyncBufferedImage> images)
+	void showBoard(EventBoard board, Map<Integer, String> names, Map<Integer, AsyncBufferedImage> images, Map<Long, TileIcons.Picture> tilePictures)
 	{
 		if (stopped)
 		{
@@ -329,6 +297,7 @@ final class EventPanel extends PluginPanel
 		showRank(board);
 		itemNames = names == null ? Map.of() : names;
 		itemImages = images == null ? Map.of() : images;
+		pictures = tilePictures == null ? Map.of() : tilePictures;
 		selectedCell = null;
 		cells.clear();
 		gridHost.removeAll();
@@ -341,7 +310,7 @@ final class EventPanel extends PluginPanel
 		}
 		else
 		{
-			SquareGrid grid = new SquareGrid(rows, cols);
+			BoardGrid grid = new BoardGrid(rows, cols);
 			grid.fit(boardWidth());
 			int openRow = board.openRow;
 			for (int row = 0; row < rows; row++)
@@ -390,7 +359,7 @@ final class EventPanel extends PluginPanel
 
 	private void fitBoard()
 	{
-		if (gridHost.getComponentCount() != 1 || !(gridHost.getComponent(0) instanceof SquareGrid))
+		if (gridHost.getComponentCount() != 1 || !(gridHost.getComponent(0) instanceof BoardGrid))
 		{
 			return;
 		}
@@ -399,7 +368,7 @@ final class EventPanel extends PluginPanel
 		{
 			return;
 		}
-		SquareGrid grid = (SquareGrid) gridHost.getComponent(0);
+		BoardGrid grid = (BoardGrid) gridHost.getComponent(0);
 		if (grid.getPreferredSize().width == width)
 		{
 			return;
@@ -419,24 +388,23 @@ final class EventPanel extends PluginPanel
 		cell.setBackground(tileColor(tile));
 		cell.setBorder(tileBorder(tile));
 		cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		cell.setToolTipText(tileTooltip(tile));
-		JLabel label = new JLabel();
-		label.setHorizontalAlignment(JLabel.CENTER);
-		AsyncBufferedImage image = itemImage(firstItemId(tile));
-		if (image != null)
-		{
-			image.addTo(label);
-		}
-		cell.add(label);
+		String tip = tileTooltip(tile);
+		cell.setToolTipText(tip);
+		TileFace face = new TileFace();
+		face.show(pictures.get(tile.id));
+		face.setToolTipText(tip);
+		cell.add(face);
 		cells.put(cell, tile);
-		cell.addMouseListener(new MouseAdapter()
+		MouseAdapter select = new MouseAdapter()
 		{
 			@Override
 			public void mousePressed(MouseEvent event)
 			{
 				select(cell);
 			}
-		});
+		};
+		cell.addMouseListener(select);
+		face.addMouseListener(select);
 		return cell;
 	}
 
@@ -497,6 +465,7 @@ final class EventPanel extends PluginPanel
 		cells.clear();
 		itemNames = Map.of();
 		itemImages = Map.of();
+		pictures = Map.of();
 		gridHost.removeAll();
 		detail.removeAll();
 		gridHost.revalidate();
@@ -727,15 +696,21 @@ final class EventPanel extends PluginPanel
 		return TileText.tileTitle(tile) + " - " + progress + " " + statusText(tile);
 	}
 
-	private static final class SquareGrid extends JPanel
+	static int cellHeight(int cellWidth)
+	{
+		return Math.max(1, cellWidth * 3 / 4);
+	}
+
+	private static final class BoardGrid extends JPanel
 	{
 		private final int rows;
 		private final int cols;
-		private int cell = 1;
+		private int cellWidth = 1;
+		private int cellHeight = 1;
 		private int gap = GRID_GAP;
 		private int extra;
 
-		private SquareGrid(int rows, int cols)
+		private BoardGrid(int rows, int cols)
 		{
 			this.rows = rows;
 			this.cols = cols;
@@ -764,11 +739,12 @@ final class EventPanel extends PluginPanel
 				nextGap += leftover / gaps;
 				leftover %= gaps;
 			}
-			cell = nextCell;
+			cellWidth = nextCell;
+			cellHeight = EventPanel.cellHeight(nextCell);
 			gap = nextGap;
 			extra = leftover;
 			int gridWidth = nextCell * cols + nextGap * gaps + leftover;
-			int gridHeight = nextCell * rows + nextGap * Math.max(0, rows - 1);
+			int gridHeight = cellHeight * rows + nextGap * Math.max(0, rows - 1);
 			Dimension size = new Dimension(Math.max(gridWidth, 1), Math.max(gridHeight, 1));
 			setPreferredSize(size);
 			setMinimumSize(size);
@@ -788,15 +764,15 @@ final class EventPanel extends PluginPanel
 					int index = row * cols + col;
 					if (index < count)
 					{
-						getComponent(index).setBounds(x, y, cell, cell);
+						getComponent(index).setBounds(x, y, cellWidth, cellHeight);
 					}
-					x += cell;
+					x += cellWidth;
 					if (col < cols - 1)
 					{
 						x += gap + (col < extra ? 1 : 0);
 					}
 				}
-				y += cell;
+				y += cellHeight;
 				if (row < rows - 1)
 				{
 					y += gap;
@@ -879,27 +855,6 @@ final class EventPanel extends PluginPanel
 		return itemImages.get(itemId);
 	}
 
-	private static Integer firstItemId(EventTile tile)
-	{
-		if (tile.items == null)
-		{
-			return null;
-		}
-		for (EventItem item : tile.items)
-		{
-			if (item == null)
-			{
-				continue;
-			}
-			Integer id = firstId(item.runeliteIds);
-			if (id != null)
-			{
-				return id;
-			}
-		}
-		return null;
-	}
-
 	private static Integer firstId(List<Integer> ids)
 	{
 		if (ids == null)
@@ -957,74 +912,18 @@ final class EventPanel extends PluginPanel
 
 	private String refreshTooltip()
 	{
-		if (!coolingDown())
+		if (coolingDown())
 		{
-			return "Fetch event";
+			return "Refresh (1 min cooldown)";
 		}
-		long seconds = (cooldownUntil - System.currentTimeMillis() + 999) / 1000;
-		if (seconds < 1)
-		{
-			seconds = 1;
-		}
-		long minutes = seconds / 60;
-		long remainder = seconds % 60;
-		return "On cooldown (" + minutes + ":" + (remainder < 10 ? "0" : "") + remainder + ")";
-	}
-
-	private void watchRefreshTip(JToolTip tip)
-	{
-		if (refreshTipTimer != null)
-		{
-			refreshTipTimer.stop();
-		}
-		refreshTip = tip;
-		tip.addHierarchyListener(event ->
-		{
-			if ((event.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0 && !tip.isShowing() && refreshTip == tip)
-			{
-				clearRefreshTip();
-			}
-		});
-		if (savedDismissDelay < 0 && coolingDown())
-		{
-			ToolTipManager manager = ToolTipManager.sharedInstance();
-			savedDismissDelay = manager.getDismissDelay();
-			manager.setDismissDelay(COOLDOWN_MS);
-		}
-		refreshTipTimer = new Timer(1000, event ->
-		{
-			if (refreshTip == null || !refreshTip.isShowing())
-			{
-				clearRefreshTip();
-				return;
-			}
-			refreshTip.setTipText(refreshTooltip());
-		});
-		refreshTipTimer.setRepeats(true);
-		refreshTipTimer.start();
-	}
-
-	private void clearRefreshTip()
-	{
-		if (refreshTipTimer != null)
-		{
-			refreshTipTimer.stop();
-			refreshTipTimer = null;
-		}
-		refreshTip = null;
-		if (savedDismissDelay >= 0)
-		{
-			ToolTipManager.sharedInstance().setDismissDelay(savedDismissDelay);
-			savedDismissDelay = -1;
-		}
+		return "Refresh event";
 	}
 
 	private void refreshButton()
 	{
 		refreshButton.setEnabled(!fetching && !coolingDown() && !currentKey().isEmpty());
-		if (refreshTip != null && refreshTip.isShowing())
-		{
-			refreshTip.setTipText(refreshTooltip());
-		}
+		String tip = refreshTooltip();
+		refreshButton.setToolTipText(tip);
+		refreshHost.setToolTipText(tip);
 	}
 }

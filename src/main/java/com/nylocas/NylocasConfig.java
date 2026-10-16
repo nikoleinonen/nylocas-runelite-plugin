@@ -13,7 +13,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "connect",
 		name = "Connect to nylocas.com",
-		description = "Allow the client to communicate with the nylocas.com backend to retrieve information and automatically submit proof.",
+		description = "Allow the client to communicate with the nylocas.com backend to retrieve information and submit proof.",
 		warning = "This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers"
 	)
 	default boolean connect()
@@ -39,7 +39,7 @@ public interface NylocasConfig extends Config
 	)
 	default boolean submitProofs()
 	{
-		return true;
+		return false;
 	}
 
 	@ConfigItem(
