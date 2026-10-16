@@ -2,10 +2,17 @@ package com.nylocas;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.Insets;
+import java.awt.LayoutManager;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.HierarchyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.HashMap;
 import java.util.List;
@@ -15,9 +22,11 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JToolTip;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.Timer;
 import javax.swing.ToolTipManager;
 import javax.swing.border.Border;
@@ -51,6 +60,7 @@ final class EventPanel extends PluginPanel
 	private static final Color GOLD = new Color(0xe4c56a);
 	private static final Color SILVER = new Color(0xc5c9d0);
 	private static final Color BRONZE = new Color(0xc4894a);
+	private static final Color INCOMPLETE_TEXT = new Color(0xa0a0a0);
 	private static final Color HEADER_COLOR = new Color(0x1e1e1e);
 	private static final Color HEADER_LINE = new Color(0x171717);
 	private static final int COOLDOWN_MS = 60_000;
@@ -99,43 +109,9 @@ final class EventPanel extends PluginPanel
 	private JToolTip refreshTip;
 	private Timer refreshTipTimer;
 	private int savedDismissDelay = -1;
-	private final JLabel status = new JLabel(" ")
-	{
-		@Override
-		public Dimension getPreferredSize()
-		{
-			Dimension size = super.getPreferredSize();
-			size.width = 0;
-			return size;
-		}
-
-		@Override
-		public Dimension getMinimumSize()
-		{
-			Dimension size = super.getMinimumSize();
-			size.width = 0;
-			return size;
-		}
-	};
+	private final JLabel status = new ShrinkLabel(" ");
 	private final JLabel rank = new JLabel();
-	private final JPanel statusRow = new JPanel(new BorderLayout(8, 0))
-	{
-		@Override
-		public Dimension getPreferredSize()
-		{
-			Dimension size = super.getPreferredSize();
-			size.width = 0;
-			return size;
-		}
-
-		@Override
-		public Dimension getMinimumSize()
-		{
-			Dimension size = super.getMinimumSize();
-			size.width = 0;
-			return size;
-		}
-	};
+	private final JPanel statusRow = new ShrinkWidth(new BorderLayout(8, 0));
 	private final JPanel gridHost = new JPanel();
 	private final JPanel detail = new JPanel();
 	private final Map<JPanel, EventTile> cells = new HashMap<>();
@@ -155,9 +131,9 @@ final class EventPanel extends PluginPanel
 		setBorder(new EmptyBorder(0, 0, PluginPanel.BORDER_OFFSET, 0));
 		getScrollPane().setBorder(BorderFactory.createMatteBorder(1, 1, 1, 0, HEADER_LINE));
 		// The bar keeps its column even when the list fits, so the board and item cards do not shift.
-		getScrollPane().setVerticalScrollBarPolicy(javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+		getScrollPane().setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
 
-		String accent = String.format("#%06X", TITLE_ACCENT.getRGB() & 0xFFFFFF);
+		String accent = hex(TITLE_ACCENT);
 		JLabel title = new JLabel("<html><b>Nylocas <span style='color: " + accent + "'>Clan Events</span></b></html>");
 		title.setForeground(ColorScheme.TEXT_COLOR);
 
@@ -182,24 +158,7 @@ final class EventPanel extends PluginPanel
 		));
 		titleWrap.add(title, BorderLayout.CENTER);
 
-		JPanel buttons = new JPanel(new GridLayout(1, 4))
-		{
-			@Override
-			public Dimension getPreferredSize()
-			{
-				Dimension size = super.getPreferredSize();
-				size.width = 0;
-				return size;
-			}
-
-			@Override
-			public Dimension getMinimumSize()
-			{
-				Dimension size = super.getMinimumSize();
-				size.width = 0;
-				return size;
-			}
-		};
+		JPanel buttons = new ShrinkWidth(new GridLayout(1, 4));
 		buttons.setOpaque(false);
 		buttons.setBorder(new EmptyBorder(4, 0, 4, 0));
 		buttons.add(refreshHost);
@@ -227,10 +186,10 @@ final class EventPanel extends PluginPanel
 		gridHost.setLayout(new BoxLayout(gridHost, BoxLayout.Y_AXIS));
 		gridHost.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		gridHost.setBorder(new EmptyBorder(8, PluginPanel.BORDER_OFFSET, 0, PluginPanel.BORDER_OFFSET));
-		gridHost.addComponentListener(new java.awt.event.ComponentAdapter()
+		gridHost.addComponentListener(new ComponentAdapter()
 		{
 			@Override
-			public void componentResized(java.awt.event.ComponentEvent event)
+			public void componentResized(ComponentEvent event)
 			{
 				fitBoard();
 			}
@@ -422,9 +381,9 @@ final class EventPanel extends PluginPanel
 		{
 			bar = PluginPanel.SCROLLBAR_WIDTH;
 		}
-		java.awt.Insets scroll = getScrollPane().getInsets();
-		java.awt.Insets panel = getInsets();
-		java.awt.Insets host = gridHost.getInsets();
+		Insets scroll = getScrollPane().getInsets();
+		Insets panel = getInsets();
+		Insets host = gridHost.getInsets();
 		int view = PluginPanel.PANEL_WIDTH + PluginPanel.SCROLLBAR_WIDTH - scroll.left - scroll.right - bar;
 		return Math.max(1, view - panel.left - panel.right - host.left - host.right);
 	}
@@ -470,10 +429,10 @@ final class EventPanel extends PluginPanel
 		}
 		cell.add(label);
 		cells.put(cell, tile);
-		cell.addMouseListener(new java.awt.event.MouseAdapter()
+		cell.addMouseListener(new MouseAdapter()
 		{
 			@Override
-			public void mousePressed(java.awt.event.MouseEvent event)
+			public void mousePressed(MouseEvent event)
 			{
 				select(cell);
 			}
@@ -703,17 +662,17 @@ final class EventPanel extends PluginPanel
 		return "Allowed from " + sources;
 	}
 
-	private static void hover(javax.swing.JComponent component, String tip)
+	private static void hover(JComponent component, String tip)
 	{
 		if (tip != null && !tip.isEmpty())
 		{
 			component.setToolTipText(tip);
 		}
-		for (java.awt.Component child : component.getComponents())
+		for (Component child : component.getComponents())
 		{
-			if (child instanceof javax.swing.JComponent)
+			if (child instanceof JComponent)
 			{
-				hover((javax.swing.JComponent) child, tip);
+				hover((JComponent) child, tip);
 			}
 		}
 	}
@@ -744,13 +703,18 @@ final class EventPanel extends PluginPanel
 	{
 		if (tile.complete)
 		{
-			return "#10b981";
+			return hex(COMPLETE_COLOR);
 		}
 		if (tile.partial)
 		{
-			return "#fbbf24";
+			return hex(PARTIAL_COLOR);
 		}
-		return "#a0a0a0";
+		return hex(INCOMPLETE_TEXT);
+	}
+
+	private static String hex(Color color)
+	{
+		return String.format("#%06X", color.getRGB() & 0xFFFFFF);
 	}
 
 	private static String tileTooltip(EventTile tile)
@@ -841,9 +805,57 @@ final class EventPanel extends PluginPanel
 		}
 	}
 
+	private static final class ShrinkWidth extends JPanel
+	{
+		private ShrinkWidth(LayoutManager layout)
+		{
+			super(layout);
+		}
+
+		@Override
+		public Dimension getPreferredSize()
+		{
+			Dimension size = super.getPreferredSize();
+			size.width = 0;
+			return size;
+		}
+
+		@Override
+		public Dimension getMinimumSize()
+		{
+			Dimension size = super.getMinimumSize();
+			size.width = 0;
+			return size;
+		}
+	}
+
+	private static final class ShrinkLabel extends JLabel
+	{
+		private ShrinkLabel(String text)
+		{
+			super(text);
+		}
+
+		@Override
+		public Dimension getPreferredSize()
+		{
+			Dimension size = super.getPreferredSize();
+			size.width = 0;
+			return size;
+		}
+
+		@Override
+		public Dimension getMinimumSize()
+		{
+			Dimension size = super.getMinimumSize();
+			size.width = 0;
+			return size;
+		}
+	}
+
 	private static final class FitWidth extends JPanel
 	{
-		private FitWidth(java.awt.LayoutManager layout)
+		private FitWidth(LayoutManager layout)
 		{
 			super(layout);
 			setAlignmentX(LEFT_ALIGNMENT);

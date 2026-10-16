@@ -31,7 +31,7 @@ public class TileTextTest
 		EventItem armour = item("crystal_armour_seed", 1, 0, 1, "The Gauntlet");
 		EventTile both = tile(2, false, weapon, armour);
 
-		assertEquals("All of these", TileText.requirement(both));
+		assertEquals("All", TileText.requirement(both));
 		assertEquals("1/2", TileText.progress(both));
 		assertEquals("1/1", TileText.itemFraction(both, weapon));
 		assertEquals("0/1", TileText.itemFraction(both, armour));
@@ -40,12 +40,12 @@ public class TileTextTest
 		assertEquals("1 pending", TileText.pendingText(armour));
 
 		EventTile either = tile(1, false, weapon, armour);
-		assertEquals("Any one of these", TileText.requirement(either));
+		assertEquals("Any", TileText.requirement(either));
 
 		EventItem orb = item("volatile_orb", 1, 1, 0, "Phosani's Nightmare");
 		EventItem other = item("harmonised_orb", 1, 0, 2, "The Nightmare");
 		EventTile drops = tile(2, true, orb, other);
-		assertEquals("2 drops from this list", TileText.requirement(drops));
+		assertEquals("2 drops", TileText.requirement(drops));
 		assertEquals("1/2", TileText.progress(drops));
 		assertEquals("1", TileText.itemFraction(drops, orb));
 		assertEquals("2 pending", TileText.pendingText(other));

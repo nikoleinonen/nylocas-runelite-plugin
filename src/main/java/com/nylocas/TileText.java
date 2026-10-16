@@ -71,23 +71,23 @@ final class TileText
 		{
 			if (tile.need == 1)
 			{
-				return "1 drop from this list";
+				return "1 drop";
 			}
-			return tile.need + " drops from this list";
+			return tile.need + " drops";
 		}
 		if (items <= 1)
 		{
-			return items == 1 ? "All of these" : "";
+			return items == 1 ? "All" : "";
 		}
 		if (tile.need >= items)
 		{
-			return "All of these";
+			return "All";
 		}
 		if (items == 2)
 		{
-			return "Any one of these";
+			return "Any";
 		}
-		return "Any " + tile.need + " of these";
+		return "Any " + tile.need;
 	}
 
 	static String progress(EventTile tile)
