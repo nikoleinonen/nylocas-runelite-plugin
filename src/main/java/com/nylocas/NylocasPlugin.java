@@ -8,7 +8,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
@@ -88,6 +91,7 @@ public class NylocasPlugin extends Plugin
 	private ProofUploader proofs;
 	private String raidChatName;
 	private long raidChatAt;
+	private final Map<String, CompletionSeen> completionCounts = new HashMap<>();
 
 	@Provides
 	NylocasConfig provideConfig(ConfigManager configManager)
@@ -276,7 +280,13 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		String sourceName = RaidSource.fromKillCount(Text.removeTags(event.getMessage()));
+		String message = Text.removeTags(event.getMessage());
+		CompletionCount count = CompletionCount.parse(message);
+		if (count != null)
+		{
+			completionCounts.put(count.name.toLowerCase(Locale.ROOT), new CompletionSeen(count.count, System.currentTimeMillis()));
+		}
+		String sourceName = RaidSource.fromKillCount(message);
 		if (sourceName == null)
 		{
 			return;
@@ -332,7 +342,7 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		proofs.capture(this::pluginDirectory, board.eventName(), labels, saveLocally, uploadProofs, targets, proofPlayerId, proofKey);
+		proofs.capture(this::pluginDirectory, board.eventName(), labels, saveLocally, uploadProofs, targets, proofPlayerId, proofKey, completionCount(sourceName));
 	}
 
 	private Filepath pluginDirectory() throws IOException
@@ -463,5 +473,31 @@ public class NylocasPlugin extends Plugin
 			raidChatName = null;
 		}
 		return source;
+	}
+
+	private Integer completionCount(String sourceName)
+	{
+		if (sourceName == null)
+		{
+			return null;
+		}
+		CompletionSeen seen = completionCounts.get(sourceName.toLowerCase(Locale.ROOT));
+		if (seen == null || System.currentTimeMillis() - seen.at > RaidSource.KILL_COUNT_MAX_AGE_MS)
+		{
+			return null;
+		}
+		return seen.count;
+	}
+
+	private static final class CompletionSeen
+	{
+		final int count;
+		final long at;
+
+		CompletionSeen(int count, long at)
+		{
+			this.count = count;
+			this.at = at;
+		}
 	}
 }

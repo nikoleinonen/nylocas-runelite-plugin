@@ -77,16 +77,16 @@ final class ProofUploader
 		}
 	}
 
-	void capture(Directory directory, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<AllowedDrops.ProofTarget> proofs, long playerId, String proofKey)
+	void capture(Directory directory, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<AllowedDrops.ProofTarget> proofs, long playerId, String proofKey, Integer completions)
 	{
 		drawManager.requestNextFrameListener(image ->
 		{
 			BufferedImage shot = copyFrame(image);
-			executor.execute(() -> saveAndUploadScreenshot(directory, shot, eventName, labels, saveLocally, uploadProofs, proofs, playerId, proofKey));
+			executor.execute(() -> saveAndUploadScreenshot(directory, shot, eventName, labels, saveLocally, uploadProofs, proofs, playerId, proofKey, completions));
 		});
 	}
 
-	private void saveAndUploadScreenshot(Directory directory, BufferedImage shot, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<AllowedDrops.ProofTarget> targets, long playerId, String key)
+	private void saveAndUploadScreenshot(Directory directory, BufferedImage shot, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<AllowedDrops.ProofTarget> targets, long playerId, String key, Integer completions)
 	{
 		if (!running || shot == null)
 		{
@@ -135,6 +135,10 @@ final class ProofUploader
 				return;
 			}
 		}
+		if (!uploadProofs)
+		{
+			return;
+		}
 		for (AllowedDrops.ProofTarget target : targets)
 		{
 			if (!running)
@@ -142,7 +146,7 @@ final class ProofUploader
 				releaseReservation(target);
 				continue;
 			}
-			enqueueProof(png, target, playerId, key);
+			enqueueProof(png, target, playerId, key, completions);
 		}
 	}
 
@@ -172,15 +176,20 @@ final class ProofUploader
 		}
 	}
 
-	private void enqueueProof(byte[] png, AllowedDrops.ProofTarget target, long playerId, String key)
+	private void enqueueProof(byte[] png, AllowedDrops.ProofTarget target, long playerId, String key, Integer completions)
 	{
 		RequestBody file = RequestBody.create(MediaType.parse("image/png"), png);
-		RequestBody body = new MultipartBody.Builder()
+		MultipartBody.Builder form = new MultipartBody.Builder()
 			.setType(MultipartBody.FORM)
 			.addFormDataPart("tile_id", Long.toString(target.tile.id))
 			.addFormDataPart("player_id", Long.toString(playerId))
 			.addFormDataPart("item", target.item.key)
-			.addFormDataPart("source", target.sourceId)
+			.addFormDataPart("source", target.sourceId);
+		if (completions != null)
+		{
+			form.addFormDataPart("completions", Integer.toString(completions));
+		}
+		RequestBody body = form
 			.addFormDataPart("file", "proof.png", file)
 			.build();
 		Request request = new Request.Builder()
