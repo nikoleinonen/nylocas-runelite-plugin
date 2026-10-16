@@ -78,29 +78,6 @@ final class AllowedDrops
 		return 0;
 	}
 
-	static List<String> matchingTitles(List<EventTile> tiles, String sourceName, int itemId)
-	{
-		List<String> titles = new ArrayList<>();
-		if (tiles == null || sourceName == null)
-		{
-			return titles;
-		}
-		for (EventTile tile : tiles)
-		{
-			if (tile == null || !matches(tile, sourceName, itemId))
-			{
-				continue;
-			}
-			if (tile.title == null || tile.title.isEmpty())
-			{
-				titles.add("tile " + tile.id);
-				continue;
-			}
-			titles.add(tile.title);
-		}
-		return titles;
-	}
-
 	private static ProofTarget matchTile(EventTile tile, String sourceName, int itemId)
 	{
 		if (tile.complete || tile.items == null)
@@ -179,23 +156,6 @@ final class AllowedDrops
 			return "";
 		}
 		return Text.removeTags(name).replace('\u00A0', ' ').trim().toLowerCase(Locale.ROOT);
-	}
-
-	private static boolean matches(EventTile tile, String sourceName, int itemId)
-	{
-		if (tile.items == null)
-		{
-			return false;
-		}
-		for (EventItem item : tile.items)
-		{
-			if (item == null || !hasRuneLiteId(item, itemId) || !hasSource(item, sourceName))
-			{
-				continue;
-			}
-			return true;
-		}
-		return false;
 	}
 
 	private static boolean hasRuneLiteId(EventItem item, int itemId)

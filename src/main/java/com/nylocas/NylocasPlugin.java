@@ -95,6 +95,7 @@ public class NylocasPlugin extends Plugin
 	private ScheduledExecutorService executor;
 
 	private final Object keyFileLock = new Object();
+	private final List<Call> proofCalls = new ArrayList<>();
 	private NavigationButton navButton;
 	private volatile EventPanel panel;
 	private Call fetchCall;
@@ -117,7 +118,7 @@ public class NylocasPlugin extends Plugin
 	protected void startUp() throws Exception
 	{
 		running = true;
-		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "icon.png");
+		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "sidebar.png");
 		panel = new EventPanel(this);
 		navButton = NavigationButton.builder()
 			.tooltip("Nylocas Clan Events")
@@ -139,6 +140,7 @@ public class NylocasPlugin extends Plugin
 			fetchCall.cancel();
 			fetchCall = null;
 		}
+		cancelProofCalls();
 		tiles = List.of();
 		players = List.of();
 		eventName = "";
@@ -275,7 +277,7 @@ public class NylocasPlugin extends Plugin
 			@Override
 			public void onFailure(Call call, IOException error)
 			{
-				if (call.isCanceled())
+				if (call.isCanceled() || !running)
 				{
 					return;
 				}
@@ -288,7 +290,15 @@ public class NylocasPlugin extends Plugin
 			{
 				try (Response ignored = response)
 				{
+					if (call.isCanceled() || !running)
+					{
+						return;
+					}
 					String body = response.body() == null ? "" : response.body().string();
+					if (!running)
+					{
+						return;
+					}
 					if (!response.isSuccessful())
 					{
 						String message = errorMessage(body);
@@ -307,12 +317,28 @@ public class NylocasPlugin extends Plugin
 							}
 						}
 					}
-					tiles = List.copyOf(next);
+					if (!running)
+					{
+						return;
+					}
+					// The panel keeps the fetched tiles. Proof reservations stay on this copy until the next refresh.
+					tiles = copyTiles(next);
 					players = copyPlayers(board);
 					eventName = board == null || board.eventName == null ? "" : board.eventName;
+					if (!running)
+					{
+						tiles = List.of();
+						players = List.of();
+						eventName = "";
+						return;
+					}
 					EventBoard loaded = board;
 					clientThread.invoke(() ->
 					{
+						if (!running)
+						{
+							return;
+						}
 						Map<Integer, String> names = new HashMap<>();
 						Map<Integer, AsyncBufferedImage> images = new HashMap<>();
 						for (EventTile tile : next)
@@ -522,18 +548,7 @@ public class NylocasPlugin extends Plugin
 				release(target);
 				continue;
 			}
-			if (!postProof(png, target, playerId, key))
-			{
-				release(target);
-				proofFailed();
-				continue;
-			}
-			String label = target.tile.title;
-			if (label == null || label.isEmpty())
-			{
-				label = target.itemName;
-			}
-			chat("Sent proof: " + ColorUtil.wrapWithColorTag(label, PROOF_SENT));
+			enqueueProof(png, target, playerId, key);
 		}
 	}
 
@@ -563,7 +578,7 @@ public class NylocasPlugin extends Plugin
 		}
 	}
 
-	private boolean postProof(byte[] png, AllowedDrops.ProofTarget target, long playerId, String key)
+	private void enqueueProof(byte[] png, AllowedDrops.ProofTarget target, long playerId, String key)
 	{
 		RequestBody file = RequestBody.create(MediaType.parse("image/png"), png);
 		RequestBody body = new MultipartBody.Builder()
@@ -579,21 +594,94 @@ public class NylocasPlugin extends Plugin
 			.header("Authorization", "Bearer " + key)
 			.post(body)
 			.build();
-		try (Response response = okHttpClient.newCall(request).execute())
+		Call call = okHttpClient.newCall(request);
+		synchronized (proofCalls)
 		{
-			if (response.isSuccessful())
+			if (!running)
 			{
-				return true;
+				release(target);
+				return;
 			}
-			String responseBody = response.body() == null ? "" : response.body().string();
-			log.debug("Proof rejected {} {}", response.code(), responseBody);
-			return false;
+			proofCalls.add(call);
 		}
-		catch (IOException ex)
+		call.enqueue(new Callback()
 		{
-			log.debug("Proof upload failed", ex);
-			return false;
+			@Override
+			public void onFailure(Call call, IOException error)
+			{
+				untrackProof(call);
+				if (call.isCanceled() || !running)
+				{
+					return;
+				}
+				log.debug("Proof upload failed", error);
+				release(target);
+				proofFailed();
+			}
+
+			@Override
+			public void onResponse(Call call, Response response)
+			{
+				untrackProof(call);
+				try (Response ignored = response)
+				{
+					if (!running)
+					{
+						return;
+					}
+					if (response.isSuccessful())
+					{
+						chat("Sent proof: " + ColorUtil.wrapWithColorTag(proofLabel(target), PROOF_SENT));
+						return;
+					}
+					String responseBody = response.body() == null ? "" : response.body().string();
+					log.debug("Proof rejected {} {}", response.code(), responseBody);
+					release(target);
+					proofFailed();
+				}
+				catch (IOException ex)
+				{
+					log.debug("Proof upload failed", ex);
+					if (!running)
+					{
+						return;
+					}
+					release(target);
+					proofFailed();
+				}
+			}
+		});
+	}
+
+	private void untrackProof(Call call)
+	{
+		synchronized (proofCalls)
+		{
+			proofCalls.remove(call);
 		}
+	}
+
+	private void cancelProofCalls()
+	{
+		List<Call> calls;
+		synchronized (proofCalls)
+		{
+			calls = new ArrayList<>(proofCalls);
+			proofCalls.clear();
+		}
+		for (Call call : calls)
+		{
+			call.cancel();
+		}
+	}
+
+	private static String proofLabel(AllowedDrops.ProofTarget target)
+	{
+		if (target.tile.title != null && !target.tile.title.isEmpty())
+		{
+			return target.tile.title;
+		}
+		return target.itemName;
 	}
 
 	private void releaseProofs(List<AllowedDrops.ProofTarget> targets)
@@ -648,6 +736,52 @@ public class NylocasPlugin extends Plugin
 			return null;
 		}
 		return client.getLocalPlayer().getName();
+	}
+
+	static List<EventTile> copyTiles(List<EventTile> source)
+	{
+		List<EventTile> copy = new ArrayList<>(source.size());
+		for (EventTile tile : source)
+		{
+			copy.add(copyTile(tile));
+		}
+		return List.copyOf(copy);
+	}
+
+	private static EventTile copyTile(EventTile tile)
+	{
+		EventTile copy = new EventTile();
+		copy.id = tile.id;
+		copy.row = tile.row;
+		copy.col = tile.col;
+		copy.title = tile.title;
+		copy.complete = tile.complete;
+		copy.partial = tile.partial;
+		copy.need = tile.need;
+		copy.pool = tile.pool;
+		if (tile.items == null)
+		{
+			return copy;
+		}
+		List<EventItem> items = new ArrayList<>(tile.items.size());
+		for (EventItem item : tile.items)
+		{
+			items.add(item == null ? null : copyItem(item));
+		}
+		copy.items = items;
+		return copy;
+	}
+
+	private static EventItem copyItem(EventItem item)
+	{
+		EventItem copy = new EventItem();
+		copy.key = item.key;
+		copy.count = item.count;
+		copy.approved = item.approved;
+		copy.pending = item.pending;
+		copy.runeliteIds = item.runeliteIds == null ? null : new ArrayList<>(item.runeliteIds);
+		copy.sources = item.sources == null ? null : new ArrayList<>(item.sources);
+		return copy;
 	}
 
 	private static List<EventPlayer> copyPlayers(EventBoard board)

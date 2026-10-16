@@ -348,6 +348,10 @@ final class EventPanel extends PluginPanel
 
 	void showStatus(String message)
 	{
+		if (stopped)
+		{
+			return;
+		}
 		fetching = false;
 		status.setText(message);
 		clearRank();
@@ -357,6 +361,10 @@ final class EventPanel extends PluginPanel
 
 	void showBoard(EventBoard board, Map<Integer, String> names, Map<Integer, AsyncBufferedImage> images)
 	{
+		if (stopped)
+		{
+			return;
+		}
 		fetching = false;
 		status.setText(teamLabel(board));
 		showRank(board);

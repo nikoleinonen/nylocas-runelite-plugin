@@ -5,7 +5,6 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 public class RaidSourceTest
 {
@@ -40,10 +39,11 @@ public class RaidSourceTest
 	{
 		EventTile normal = raidTile("Chambers of Xeric");
 		EventTile challenge = raidTile("Chambers of Xeric Challenge Mode");
+		challenge.id = 2;
 		String source = RaidSource.resolve("Chambers of Xeric", "Chambers of Xeric Challenge Mode");
 
-		assertTrue(AllowedDrops.matchingTitles(List.of(normal), source, 20997).isEmpty());
-		assertEquals(List.of("Olmlet"), AllowedDrops.matchingTitles(List.of(challenge), source, 20997));
+		assertNull(AllowedDrops.firstProof(List.of(normal), source, 20997));
+		assertEquals(2, AllowedDrops.firstProof(List.of(challenge), source, 20997).tile.id);
 	}
 
 	@Test
@@ -53,20 +53,23 @@ public class RaidSourceTest
 		EventTile expert = raidTile("Tombs of Amascut: Expert Mode");
 		String source = RaidSource.resolve("Tombs of Amascut", "Tombs of Amascut: Entry Mode");
 
-		assertTrue(AllowedDrops.matchingTitles(List.of(normal, expert), source, 27277).isEmpty());
+		assertNull(AllowedDrops.firstProof(List.of(normal, expert), source, 27277));
 	}
 
 	private static EventTile raidTile(String lootName)
 	{
 		EventSource source = new EventSource();
+		source.id = lootName;
 		source.displayName = lootName;
 		source.runeliteNames = List.of(lootName);
 		EventItem item = new EventItem();
 		item.key = "olmlet";
+		item.count = 1;
 		item.runeliteIds = List.of(20997, 27277);
 		item.sources = List.of(source);
 		EventTile tile = new EventTile();
 		tile.id = 1;
+		tile.need = 1;
 		tile.title = "Olmlet";
 		tile.items = List.of(item);
 		return tile;

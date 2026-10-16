@@ -5,32 +5,11 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class AllowedDropsTest
 {
-	@Test
-	public void seedFromEitherGauntlet()
-	{
-		List<EventTile> tiles = List.of(seedTile());
-
-		assertEquals(List.of("Weapon and Armour seed"), AllowedDrops.matchingTitles(tiles, "Crystalline Hunllef", 4207));
-		assertEquals(List.of("Weapon and Armour seed"), AllowedDrops.matchingTitles(tiles, "Corrupted Hunllef", 4207));
-		assertTrue(AllowedDrops.matchingTitles(tiles, "The Gauntlet", 4207).isEmpty());
-	}
-
-	@Test
-	public void otherItemFromGauntlet()
-	{
-		assertTrue(AllowedDrops.matchingTitles(List.of(seedTile()), "Crystalline Hunllef", 4151).isEmpty());
-	}
-
-	@Test
-	public void seedFromAnotherSource()
-	{
-		assertTrue(AllowedDrops.matchingTitles(List.of(seedTile()), "Goblin", 4207).isEmpty());
-	}
-
 	@Test
 	public void firstOpenTileInBoardOrder()
 	{
@@ -92,7 +71,7 @@ public class AllowedDropsTest
 		tile.items.get(0).count = 1;
 		tile.items.get(0).pending = 2;
 
-		assertEquals(null, AllowedDrops.firstProof(List.of(tile), "Crystalline Hunllef", 4207));
+		assertNull(AllowedDrops.firstProof(List.of(tile), "Crystalline Hunllef", 4207));
 	}
 
 	@Test
@@ -110,23 +89,24 @@ public class AllowedDropsTest
 	@Test
 	public void wrongItemIsNotAProof()
 	{
-		assertEquals(null, AllowedDrops.firstProof(List.of(seedTile()), "Crystalline Hunllef", 4151));
+		assertNull(AllowedDrops.firstProof(List.of(seedTile()), "Crystalline Hunllef", 4151));
 	}
 
 	@Test
 	public void playerNameMatchesTheRoster()
 	{
-		EventPlayer weirdchimp = new EventPlayer();
-		weirdchimp.id = 9;
-		weirdchimp.name = "WeirdChimp";
-		EventPlayer zezima = new EventPlayer();
-		zezima.id = 4;
-		zezima.name = "Zezima";
-		List<EventPlayer> players = List.of(weirdchimp, zezima);
+		EventPlayer playerA = new EventPlayer();
+		playerA.id = 9;
+		playerA.name = "playerA";
+		EventPlayer playerB = new EventPlayer();
+		playerB.id = 4;
+		playerB.name = "playerB";
+		List<EventPlayer> players = List.of(playerA, playerB);
 
-		assertEquals(9, AllowedDrops.playerId(players, "weirdchimp"));
-		assertEquals(9, AllowedDrops.playerId(players, "<img=2>WeirdChimp"));
-		assertEquals(9, AllowedDrops.playerId(players, "WeirdChimp\u00A0"));
+		assertEquals(9, AllowedDrops.playerId(players, "playera"));
+		assertEquals(9, AllowedDrops.playerId(players, "<img=2>playerA"));
+		assertEquals(9, AllowedDrops.playerId(players, "playerA\u00A0"));
+		assertEquals(4, AllowedDrops.playerId(players, "playerB"));
 		assertEquals(0, AllowedDrops.playerId(players, "Other"));
 		assertEquals(0, AllowedDrops.playerId(players, null));
 	}

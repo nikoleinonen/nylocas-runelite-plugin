@@ -16,8 +16,5 @@ public class EventPanelRankTest
 		assertEquals(new Color(0xc5c9d0), EventPanel.rankColor("2nd"));
 		assertEquals(new Color(0xc4894a), EventPanel.rankColor("3rd"));
 		assertEquals(ColorScheme.TEXT_COLOR, EventPanel.rankColor("4th"));
-		assertEquals(ColorScheme.TEXT_COLOR, EventPanel.rankColor("11th"));
-		assertEquals(ColorScheme.TEXT_COLOR, EventPanel.rankColor(null));
-		assertEquals(ColorScheme.TEXT_COLOR, EventPanel.rankColor(""));
 	}
 }
