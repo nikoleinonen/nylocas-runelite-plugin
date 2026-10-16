@@ -54,7 +54,7 @@ import okhttp3.Response;
 @Slf4j
 @PluginDescriptor(
 	name = "Nylocas Clan Events",
-	description = "Nylocas Clan Events RuneLite integration",
+	description = "nylocas.com RuneLite integration",
 	internalName = "nylocas-clan-events"
 )
 public class NylocasPlugin extends Plugin
