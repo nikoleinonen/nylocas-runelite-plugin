@@ -255,11 +255,11 @@ public class NylocasPlugin extends Plugin
 		return getPluginDirectory().joinSegment(TEAM_KEY_FILE);
 	}
 
-	boolean fetchEvent(String key, EventPanel view)
+	boolean fetchEvent(String key, EventPanel panel)
 	{
 		if (!config.connect())
 		{
-			view.showStatus("Turn on Connect to nylocas.com in the plugin settings");
+			panel.showStatus("Turn on Connect to nylocas.com in the plugin settings");
 			return false;
 		}
 		if (fetchCall != null)
@@ -282,7 +282,7 @@ public class NylocasPlugin extends Plugin
 					return;
 				}
 				log.debug("Fetch event failed", error);
-				SwingUtilities.invokeLater(() -> view.showStatus("Could not fetch event"));
+				SwingUtilities.invokeLater(() -> panel.showStatus("Could not fetch event"));
 			}
 
 			@Override
@@ -302,7 +302,7 @@ public class NylocasPlugin extends Plugin
 					if (!response.isSuccessful())
 					{
 						String message = errorMessage(body);
-						SwingUtilities.invokeLater(() -> view.showStatus(message));
+						SwingUtilities.invokeLater(() -> panel.showStatus(message));
 						return;
 					}
 					EventBoard board = gson.fromJson(body, EventBoard.class);
@@ -375,7 +375,7 @@ public class NylocasPlugin extends Plugin
 								}
 							}
 						}
-						SwingUtilities.invokeLater(() -> view.showBoard(loaded, names, images));
+						SwingUtilities.invokeLater(() -> panel.showBoard(loaded, names, images));
 					});
 				}
 			}
@@ -390,12 +390,12 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		String name = RaidSource.fromKillCount(Text.removeTags(event.getMessage()));
-		if (name == null)
+		String sourceName = RaidSource.fromKillCount(Text.removeTags(event.getMessage()));
+		if (sourceName == null)
 		{
 			return;
 		}
-		raidChatName = name;
+		raidChatName = sourceName;
 		raidChatAt = System.currentTimeMillis();
 	}
 
@@ -411,48 +411,52 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		List<String> names = new ArrayList<>();
+		List<String> itemNames = new ArrayList<>();
 		for (ItemStack item : lootReceived.getItems())
 		{
-			String name = itemName(item.getId());
-			names.add(name == null ? Integer.toString(item.getId()) : name);
+			itemNames.add(itemLabel(item.getId()));
 		}
-		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", completedSourceMessage(sourceName, names), null);
-		log.debug("Allowed source {} dropped {}", sourceName, names);
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", completedSourceMessage(sourceName, itemNames), null);
+		log.debug("Allowed source {} dropped {}", sourceName, itemNames);
 		List<EventTile> board = tiles;
-		List<EventPlayer> roster = players;
-		String name = eventName;
 		List<String> labels = dropLabels(board, sourceName, lootReceived.getItems());
 		if (labels.isEmpty())
 		{
 			return;
 		}
-		boolean send = config.submitProofs() && config.connect();
-		List<AllowedDrops.ProofTarget> uploads = List.of();
-		String key = "";
-		long playerId = 0;
-		if (send)
+		boolean uploadProofs = config.submitProofs() && config.connect();
+		List<AllowedDrops.ProofTarget> proofs = List.of();
+		String proofKey = "";
+		long proofPlayerId = 0;
+		if (uploadProofs)
 		{
-			uploads = proofTargets(board, sourceName, lootReceived.getItems());
-			key = teamKey();
-			playerId = AllowedDrops.playerId(roster, localPlayerName());
-			if (key.isEmpty() || playerId == 0)
+			proofs = proofTargets(board, sourceName, lootReceived.getItems());
+			proofKey = teamKey();
+			proofPlayerId = AllowedDrops.playerId(players, localPlayerName());
+			if (proofKey.isEmpty() || proofPlayerId == 0)
 			{
-				releaseProofs(uploads);
+				releaseReservations(proofs);
 				proofFailed();
-				uploads = List.of();
-				send = false;
+				proofs = List.of();
+				uploadProofs = false;
 			}
 		}
-		boolean upload = send;
-		List<AllowedDrops.ProofTarget> toSend = uploads;
-		String teamKey = key;
-		long player = playerId;
+		captureDrop(eventName, labels, uploadProofs, proofs, proofPlayerId, proofKey);
+	}
+
+	private void captureDrop(String eventName, List<String> labels, boolean uploadProofs, List<AllowedDrops.ProofTarget> proofs, long playerId, String proofKey)
+	{
 		drawManager.requestNextFrameListener(image ->
 		{
 			BufferedImage shot = copyFrame(image);
-			executor.execute(() -> keepScreenshot(shot, name, labels, upload, toSend, player, teamKey));
+			executor.execute(() -> saveAndUploadScreenshot(shot, eventName, labels, uploadProofs, proofs, playerId, proofKey));
 		});
+	}
+
+	private String itemLabel(int itemId)
+	{
+		String label = itemName(itemId);
+		return label == null ? Integer.toString(itemId) : label;
 	}
 
 	private List<String> dropLabels(List<EventTile> board, String sourceName, Collection<ItemStack> stacks)
@@ -464,14 +468,10 @@ public class NylocasPlugin extends Plugin
 			{
 				continue;
 			}
-			String name = itemName(stack.getId());
-			if (name == null)
+			String label = itemLabel(stack.getId());
+			if (!labels.contains(label))
 			{
-				name = Integer.toString(stack.getId());
-			}
-			if (!labels.contains(name))
-			{
-				labels.add(name);
+				labels.add(label);
 			}
 		}
 		return labels;
@@ -488,20 +488,19 @@ public class NylocasPlugin extends Plugin
 				continue;
 			}
 			target.item.pending++;
-			String name = itemName(stack.getId());
-			target.itemName = name == null ? Integer.toString(stack.getId()) : name;
+			target.itemName = itemLabel(stack.getId());
 			targets.add(target);
 		}
 		return targets;
 	}
 
-	private void keepScreenshot(BufferedImage shot, String eventName, List<String> labels, boolean send, List<AllowedDrops.ProofTarget> targets, long playerId, String key)
+	private void saveAndUploadScreenshot(BufferedImage shot, String eventName, List<String> labels, boolean uploadProofs, List<AllowedDrops.ProofTarget> targets, long playerId, String key)
 	{
 		if (!running || shot == null)
 		{
-			if (send)
+			if (uploadProofs)
 			{
-				releaseProofs(targets);
+				releaseReservations(targets);
 				if (running)
 				{
 					proofFailed();
@@ -517,27 +516,27 @@ public class NylocasPlugin extends Plugin
 		catch (IOException ex)
 		{
 			log.warn("Could not encode proof", ex);
-			if (send)
+			if (uploadProofs)
 			{
-				releaseProofs(targets);
+				releaseReservations(targets);
 				proofFailed();
 			}
 			else
 			{
-				chat(ColorUtil.wrapWithColorTag("Could not save screenshot", Color.RED));
+				postGameMessage(ColorUtil.wrapWithColorTag("Could not save screenshot", Color.RED));
 			}
 			return;
 		}
 		boolean saved = saveScreenshot(png, eventName, labels);
-		if (!send)
+		if (!uploadProofs)
 		{
 			if (saved)
 			{
-				chat("Saved screenshot");
+				postGameMessage("Saved screenshot");
 			}
 			else
 			{
-				chat(ColorUtil.wrapWithColorTag("Could not save screenshot", Color.RED));
+				postGameMessage(ColorUtil.wrapWithColorTag("Could not save screenshot", Color.RED));
 			}
 			return;
 		}
@@ -545,7 +544,7 @@ public class NylocasPlugin extends Plugin
 		{
 			if (!running)
 			{
-				release(target);
+				releaseReservation(target);
 				continue;
 			}
 			enqueueProof(png, target, playerId, key);
@@ -599,7 +598,7 @@ public class NylocasPlugin extends Plugin
 		{
 			if (!running)
 			{
-				release(target);
+				releaseReservation(target);
 				return;
 			}
 			proofCalls.add(call);
@@ -615,7 +614,7 @@ public class NylocasPlugin extends Plugin
 					return;
 				}
 				log.debug("Proof upload failed", error);
-				release(target);
+				releaseReservation(target);
 				proofFailed();
 			}
 
@@ -631,12 +630,12 @@ public class NylocasPlugin extends Plugin
 					}
 					if (response.isSuccessful())
 					{
-						chat("Sent proof: " + ColorUtil.wrapWithColorTag(proofLabel(target), PROOF_SENT));
+						postGameMessage("Sent proof: " + ColorUtil.wrapWithColorTag(proofLabel(target), PROOF_SENT));
 						return;
 					}
 					String responseBody = response.body() == null ? "" : response.body().string();
 					log.debug("Proof rejected {} {}", response.code(), responseBody);
-					release(target);
+					releaseReservation(target);
 					proofFailed();
 				}
 				catch (IOException ex)
@@ -646,7 +645,7 @@ public class NylocasPlugin extends Plugin
 					{
 						return;
 					}
-					release(target);
+					releaseReservation(target);
 					proofFailed();
 				}
 			}
@@ -684,15 +683,15 @@ public class NylocasPlugin extends Plugin
 		return target.itemName;
 	}
 
-	private void releaseProofs(List<AllowedDrops.ProofTarget> targets)
+	private void releaseReservations(List<AllowedDrops.ProofTarget> targets)
 	{
 		for (AllowedDrops.ProofTarget target : targets)
 		{
-			release(target);
+			releaseReservation(target);
 		}
 	}
 
-	private void release(AllowedDrops.ProofTarget target)
+	private void releaseReservation(AllowedDrops.ProofTarget target)
 	{
 		Runnable undo = () ->
 		{
@@ -711,10 +710,10 @@ public class NylocasPlugin extends Plugin
 
 	private void proofFailed()
 	{
-		chat(ColorUtil.wrapWithColorTag(PROOF_FAILED, Color.RED));
+		postGameMessage(ColorUtil.wrapWithColorTag(PROOF_FAILED, Color.RED));
 	}
 
-	private void chat(String message)
+	private void postGameMessage(String message)
 	{
 		if (!running)
 		{
