@@ -1,5 +1,6 @@
 package com.nylocas;
 
+import com.google.gson.Gson;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Image;
@@ -12,6 +13,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.function.BooleanSupplier;
+import java.util.function.IntConsumer;
+import java.util.function.IntSupplier;
 import javax.imageio.ImageIO;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
@@ -32,7 +36,6 @@ import okhttp3.Response;
 @Slf4j
 final class ProofUploader
 {
-	private static final String PROOF_FAILED = "Failed to submit proof automatically. Please submit it manually.";
 	private static final Color PROOF_SENT = new Color(0x10b981);
 	private static final DateTimeFormatter SHOT_STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss_SSS").withZone(ZoneId.systemDefault());
 
@@ -41,16 +44,24 @@ final class ProofUploader
 	private final DrawManager drawManager;
 	private final ScheduledExecutorService executor;
 	private final OkHttpClient okHttpClient;
+	private final Gson gson;
+	private final IntSupplier sessionId;
+	private final BooleanSupplier eventAfterEnd;
+	private final IntConsumer onEventEnded;
 	private final List<Call> proofCalls = new ArrayList<>();
 	private volatile boolean running;
 
-	ProofUploader(Client client, ClientThread clientThread, DrawManager drawManager, ScheduledExecutorService executor, OkHttpClient okHttpClient)
+	ProofUploader(Client client, ClientThread clientThread, DrawManager drawManager, ScheduledExecutorService executor, OkHttpClient okHttpClient, Gson gson, IntSupplier sessionId, BooleanSupplier eventAfterEnd, IntConsumer onEventEnded)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
 		this.drawManager = drawManager;
 		this.executor = executor;
 		this.okHttpClient = okHttpClient;
+		this.gson = gson;
+		this.sessionId = sessionId;
+		this.eventAfterEnd = eventAfterEnd;
+		this.onEventEnded = onEventEnded;
 	}
 
 	void start()
@@ -66,7 +77,12 @@ final class ProofUploader
 
 	void proofFailed()
 	{
-		postGameMessage(ColorUtil.wrapWithColorTag(PROOF_FAILED, Color.RED));
+		postGameMessage(ColorUtil.wrapWithColorTag(ProofMessages.MANUAL, Color.RED));
+	}
+
+	void cancelUploads()
+	{
+		cancelProofCalls();
 	}
 
 	void releaseReservations(List<AllowedDrops.ProofTarget> targets)
@@ -198,6 +214,7 @@ final class ProofUploader
 			.post(body)
 			.build();
 		Call call = okHttpClient.newCall(request);
+		int session = sessionId.getAsInt();
 		synchronized (proofCalls)
 		{
 			if (!running)
@@ -240,7 +257,7 @@ final class ProofUploader
 					String responseBody = response.body() == null ? "" : response.body().string();
 					log.debug("Proof rejected {} {}", response.code(), responseBody);
 					releaseReservation(target);
-					proofFailed();
+					rejectProof(response.code(), responseBody, session);
 				}
 				catch (IOException ex)
 				{
@@ -254,6 +271,39 @@ final class ProofUploader
 				}
 			}
 		});
+	}
+
+	private void rejectProof(int status, String responseBody, int session)
+	{
+		String error = errorOf(responseBody);
+		if (status == 401 && error.isEmpty())
+		{
+			error = "unauthorized";
+		}
+		if (ProofMessages.endsEvent(error, eventAfterEnd.getAsBoolean()))
+		{
+			onEventEnded.accept(session);
+			return;
+		}
+		String line = ProofMessages.line(error);
+		if (line == null)
+		{
+			return;
+		}
+		postGameMessage(ColorUtil.wrapWithColorTag(line, Color.RED));
+	}
+
+	private String errorOf(String body)
+	{
+		try
+		{
+			ErrorBody parsed = gson.fromJson(body, ErrorBody.class);
+			return parsed == null || parsed.error == null ? "" : parsed.error;
+		}
+		catch (RuntimeException ex)
+		{
+			return "";
+		}
 	}
 
 	private void untrackProof(Call call)
@@ -352,5 +402,10 @@ final class ProofUploader
 	interface Directory
 	{
 		Filepath get() throws IOException;
+	}
+
+	private static final class ErrorBody
+	{
+		String error;
 	}
 }

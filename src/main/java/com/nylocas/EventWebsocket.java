@@ -26,7 +26,7 @@ final class EventWebsocket
 	private final NylocasPlugin plugin;
 
 	private int generation;
-	private boolean stopped = true;
+	private volatile boolean stopped = true;
 	private int step;
 	private String key = "";
 	private boolean rank;
@@ -82,10 +82,18 @@ final class EventWebsocket
 		this.rank = rank;
 		this.own = own;
 		this.enemy = enemy;
-		this.startsAt = parseTime(startsAt);
-		this.endsAt = parseTime(endsAt);
+		this.startsAt = EventClock.parse(startsAt);
+		this.endsAt = EventClock.parse(endsAt);
 		if (this.endsAt == null || !Instant.now().isBefore(this.endsAt))
 		{
+			if (this.endsAt != null)
+			{
+				finish(true);
+			}
+			else
+			{
+				stopped = true;
+			}
 			return;
 		}
 		if (this.startsAt != null && Instant.now().isBefore(this.startsAt))
@@ -94,6 +102,11 @@ final class EventWebsocket
 			return;
 		}
 		connectNow();
+	}
+
+	boolean isLive()
+	{
+		return !stopped;
 	}
 
 	void stop()
@@ -115,9 +128,9 @@ final class EventWebsocket
 		{
 			return;
 		}
-		if (endsAt == null || !Instant.now().isBefore(endsAt))
+		if (endsAt == null || EventClock.afterEnd(endsAt, Instant.now()))
 		{
-			finish();
+			finish(EventClock.afterEnd(endsAt, Instant.now()));
 			return;
 		}
 		if (startsAt != null && Instant.now().isBefore(startsAt))
@@ -136,9 +149,9 @@ final class EventWebsocket
 
 	private void connectNow()
 	{
-		if (stopped || endsAt == null || !Instant.now().isBefore(endsAt))
+		if (stopped || endsAt == null || EventClock.afterEnd(endsAt, Instant.now()))
 		{
-			finish();
+			finish(!stopped && EventClock.afterEnd(endsAt, Instant.now()));
 			return;
 		}
 		int ticket = generation;
@@ -201,7 +214,7 @@ final class EventWebsocket
 				}
 				if (code == 1000)
 				{
-					finish();
+					finish(EventClock.afterEnd(endsAt, Instant.now()));
 					return;
 				}
 				reconnect(0);
@@ -223,7 +236,7 @@ final class EventWebsocket
 				String message = errorText(response);
 				if (status == 401)
 				{
-					finish();
+					finish(true);
 					return;
 				}
 				if (status == 400 && "event has not started".equals(message))
@@ -241,7 +254,7 @@ final class EventWebsocket
 		});
 	}
 
-	private void finish()
+	private void finish(boolean eventOver)
 	{
 		if (stopped)
 		{
@@ -249,7 +262,7 @@ final class EventWebsocket
 		}
 		stopped = true;
 		cancelPending();
-		SwingUtilities.invokeLater(plugin::websocketEnded);
+		SwingUtilities.invokeLater(() -> plugin.websocketEnded(eventOver));
 	}
 
 	private void schedule(long delayMillis, Runnable task)
@@ -314,22 +327,6 @@ final class EventWebsocket
 		catch (NumberFormatException ex)
 		{
 			return 60;
-		}
-	}
-
-	private static Instant parseTime(String raw)
-	{
-		if (raw == null || raw.isEmpty())
-		{
-			return null;
-		}
-		try
-		{
-			return Instant.parse(raw);
-		}
-		catch (RuntimeException ex)
-		{
-			return null;
 		}
 	}
 

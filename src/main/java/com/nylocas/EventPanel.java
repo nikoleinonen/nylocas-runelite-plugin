@@ -336,6 +336,7 @@ final class EventPanel extends PluginPanel
 		if (reopenSocket)
 		{
 			plugin.openWebsocket(board);
+			plugin.noteSession(board);
 		}
 	}
 
@@ -1008,6 +1009,16 @@ final class EventPanel extends PluginPanel
 			return "";
 		}
 		return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+	}
+
+	boolean clearBecauseEventEnded()
+	{
+		if (stopped || (!connected && cells.isEmpty() && !fetching))
+		{
+			return false;
+		}
+		disconnect();
+		return true;
 	}
 
 	void socketFinished()

@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -54,6 +55,8 @@ final class EventBoardClient
 	private volatile String eventPassword = "";
 	private volatile boolean eventLoaded;
 	private volatile boolean eventStarted;
+	private volatile Instant startsAt;
+	private volatile Instant endsAt;
 
 	EventBoardClient(OkHttpClient okHttpClient, Gson gson, ClientThread clientThread, ItemManager itemManager)
 	{
@@ -125,6 +128,8 @@ final class EventBoardClient
 		eventPassword = "";
 		eventLoaded = false;
 		eventStarted = false;
+		startsAt = null;
+		endsAt = null;
 		sessionKey = "";
 	}
 
@@ -146,6 +151,8 @@ final class EventBoardClient
 		eventPassword = "";
 		eventLoaded = false;
 		eventStarted = false;
+		startsAt = null;
+		endsAt = null;
 		sessionKey = "";
 	}
 
@@ -224,6 +231,8 @@ final class EventBoardClient
 		teamName = board == null || board.teamName == null ? "" : board.teamName;
 		eventPassword = passwordOf(board);
 		eventStarted = board != null && board.eventStarted;
+		startsAt = EventClock.parse(board == null ? null : board.startsAt);
+		endsAt = EventClock.parse(board == null ? null : board.endsAt);
 		eventLoaded = true;
 		if (!running || ticket != generation.get())
 		{
@@ -265,6 +274,16 @@ final class EventBoardClient
 	boolean eventStarted()
 	{
 		return eventStarted;
+	}
+
+	boolean beforeStart()
+	{
+		return EventClock.beforeStart(startsAt, Instant.now());
+	}
+
+	boolean afterEnd()
+	{
+		return EventClock.afterEnd(endsAt, Instant.now());
 	}
 
 	String itemName(int id)

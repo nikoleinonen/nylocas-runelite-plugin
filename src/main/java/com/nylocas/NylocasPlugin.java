@@ -6,6 +6,7 @@ import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -13,6 +14,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
@@ -90,6 +94,9 @@ public class NylocasPlugin extends Plugin
 	private EventBoardClient board;
 	private EventWebsocket websocket;
 	private ProofUploader proofs;
+	private final AtomicInteger sessionGeneration = new AtomicInteger();
+	private volatile boolean proofsStopped;
+	private volatile ScheduledFuture<?> eventEndTask;
 	private String raidChatName;
 	private long raidChatAt;
 	private final Map<String, CompletionSeen> completionCounts = new HashMap<>();
@@ -106,7 +113,7 @@ public class NylocasPlugin extends Plugin
 		running = true;
 		board = new EventBoardClient(okHttpClient, gson, clientThread, itemManager);
 		websocket = new EventWebsocket(okHttpClient, gson, executor, this);
-		proofs = new ProofUploader(client, clientThread, drawManager, executor, okHttpClient);
+		proofs = new ProofUploader(client, clientThread, drawManager, executor, okHttpClient, gson, this::sessionId, this::eventAfterEnd, this::onProofEventEnded);
 		board.start();
 		proofs.start();
 		overlay = new EventPasswordOverlay(config, this);
@@ -128,6 +135,7 @@ public class NylocasPlugin extends Plugin
 	protected void shutDown() throws Exception
 	{
 		running = false;
+		cancelEventEnd();
 		if (overlay != null)
 		{
 			overlayManager.remove(overlay);
@@ -294,6 +302,12 @@ public class NylocasPlugin extends Plugin
 
 	void endSession()
 	{
+		sessionGeneration.incrementAndGet();
+		cancelEventEnd();
+		if (proofs != null)
+		{
+			proofs.cancelUploads();
+		}
 		if (websocket != null)
 		{
 			websocket.stop();
@@ -301,6 +315,32 @@ public class NylocasPlugin extends Plugin
 		if (board != null)
 		{
 			board.clearSession();
+		}
+	}
+
+	void noteSession(EventBoard event)
+	{
+		int ticket = sessionGeneration.incrementAndGet();
+		proofsStopped = false;
+		scheduleEventEnd(event == null ? null : event.endsAt, ticket);
+	}
+
+	void websocketEnded(boolean eventOver)
+	{
+		if (!running)
+		{
+			return;
+		}
+		if (eventOver)
+		{
+			proofsStopped = true;
+			endEventSession();
+			return;
+		}
+		EventPanel current = panel;
+		if (current != null)
+		{
+			current.socketFinished();
 		}
 	}
 
@@ -313,13 +353,82 @@ public class NylocasPlugin extends Plugin
 		websocket.open(teamKey(), true, true, config.receiveEnemy(), event.startsAt, event.endsAt);
 	}
 
-	void websocketEnded()
+	private void onLocalEventEnd(int ticket)
 	{
-		EventPanel current = panel;
-		if (running && current != null)
+		if (!running || ticket != sessionGeneration.get())
 		{
-			current.socketFinished();
+			return;
 		}
+		proofsStopped = true;
+		if (websocket != null && websocket.isLive())
+		{
+			return;
+		}
+		endEventSession();
+	}
+
+	private void onProofEventEnded(int session)
+	{
+		if (!running || session != sessionGeneration.get())
+		{
+			return;
+		}
+		proofsStopped = true;
+		if (websocket != null && websocket.isLive())
+		{
+			return;
+		}
+		endEventSession();
+	}
+
+	private void endEventSession()
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			if (!running)
+			{
+				return;
+			}
+			EventPanel current = panel;
+			if (current == null || !current.clearBecauseEventEnded())
+			{
+				return;
+			}
+			chat(ProofMessages.EVENT_ENDED);
+		});
+	}
+
+	private void scheduleEventEnd(String endsAt, int ticket)
+	{
+		cancelEventEnd();
+		Instant end = EventClock.parse(endsAt);
+		if (end == null)
+		{
+			return;
+		}
+		long delay = Math.max(0L, end.toEpochMilli() - Instant.now().toEpochMilli());
+		eventEndTask = executor.schedule(() -> onLocalEventEnd(ticket), delay, TimeUnit.MILLISECONDS);
+	}
+
+	private void cancelEventEnd()
+	{
+		ScheduledFuture<?> task = eventEndTask;
+		eventEndTask = null;
+		if (task != null)
+		{
+			task.cancel(false);
+		}
+	}
+
+	private int sessionId()
+	{
+		return sessionGeneration.get();
+	}
+
+	private boolean eventAfterEnd()
+	{
+		EventBoardClient current = board;
+		return current != null && current.afterEnd();
 	}
 
 	void onWebsocketFrame(EventWebsocket.Frame frame)
@@ -460,7 +569,7 @@ public class NylocasPlugin extends Plugin
 			return;
 		}
 		boolean saveLocally = config.saveProofs();
-		boolean uploadProofs = config.submitProofs() && config.connect();
+		boolean uploadProofs = config.submitProofs() && config.connect() && !proofsStopped && !board.beforeStart() && !board.afterEnd();
 		List<AllowedDrops.ProofTarget> targets = List.of();
 		String proofKey = "";
 		long proofPlayerId = 0;
