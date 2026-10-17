@@ -463,7 +463,7 @@ public class NylocasPlugin extends Plugin
 	private String lootSource(String lootName)
 	{
 		String chat = raidChatName;
-		if (chat != null && System.currentTimeMillis() - raidChatAt > RaidSource.KILL_COUNT_MAX_AGE_MS)
+		if (chat != null && !RaidSource.chatNameIsRecent(raidChatAt))
 		{
 			chat = null;
 		}
@@ -482,7 +482,7 @@ public class NylocasPlugin extends Plugin
 			return null;
 		}
 		CompletionSeen seen = completionCounts.get(sourceName.toLowerCase(Locale.ROOT));
-		if (seen == null || System.currentTimeMillis() - seen.at > RaidSource.KILL_COUNT_MAX_AGE_MS)
+		if (seen == null || !CompletionCount.isRecent(seen.at))
 		{
 			return null;
 		}

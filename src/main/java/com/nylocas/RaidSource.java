@@ -5,12 +5,17 @@ import java.util.regex.Pattern;
 
 final class RaidSource
 {
-	static final long KILL_COUNT_MAX_AGE_MS = 10 * 60 * 1000L;
+	private static final long CHAT_NAME_MAX_AGE_MS = 5 * 60 * 1000L;
 
 	private static final Pattern COMPLETED = Pattern.compile("Your (?:completed|subdued) (.+) count is: [\\d,]+\\b");
 
 	private RaidSource()
 	{
+	}
+
+	static boolean chatNameIsRecent(long seenAt)
+	{
+		return System.currentTimeMillis() - seenAt <= CHAT_NAME_MAX_AGE_MS;
 	}
 
 	static boolean isChest(String lootName)

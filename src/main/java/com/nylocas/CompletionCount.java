@@ -5,6 +5,8 @@ import java.util.regex.Pattern;
 
 final class CompletionCount
 {
+	private static final long MAX_AGE_MS = 3 * 60 * 1000L;
+
 	private static final Pattern KILL = Pattern.compile("Your (.+) kill count is: ([\\d,]+)\\b");
 	private static final Pattern COMPLETED = Pattern.compile("Your (?:completed|subdued) (.+) count is: ([\\d,]+)\\b");
 
@@ -15,6 +17,11 @@ final class CompletionCount
 	{
 		this.name = name;
 		this.count = count;
+	}
+
+	static boolean isRecent(long seenAt)
+	{
+		return System.currentTimeMillis() - seenAt <= MAX_AGE_MS;
 	}
 
 	static CompletionCount parse(String message)
