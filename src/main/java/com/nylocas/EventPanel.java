@@ -88,6 +88,7 @@ final class EventPanel extends PluginPanel
 	private Map<Integer, AsyncBufferedImage> itemImages = Map.of();
 	private Map<Long, TileIcons.Picture> pictures = Map.of();
 	private JPanel selectedCell;
+	private BufferedImage lockedIcon;
 	private boolean fetching;
 	private boolean refreshingBoard;
 	private boolean connected;
@@ -550,11 +551,27 @@ final class EventPanel extends PluginPanel
 
 	private JPanel lockedCell(boolean empty)
 	{
-		JPanel cell = new JPanel(new GridLayout(1, 1));
+		JPanel cell = new JPanel(new GridBagLayout());
 		cell.setBackground(INCOMPLETE_COLOR);
 		cell.setBorder(INCOMPLETE_BORDER);
-		cell.setToolTipText(empty ? "Empty" : "Locked");
+		String tip = empty ? "Empty" : "Locked";
+		cell.setToolTipText(tip);
+		if (!empty)
+		{
+			JLabel icon = new JLabel(new ImageIcon(lockedIcon()));
+			icon.setToolTipText(tip);
+			cell.add(icon);
+		}
 		return cell;
+	}
+
+	private BufferedImage lockedIcon()
+	{
+		if (lockedIcon == null)
+		{
+			lockedIcon = ImageUtil.loadImageResource(getClass(), "locked.png");
+		}
+		return lockedIcon;
 	}
 
 	private void select(JPanel cell)
