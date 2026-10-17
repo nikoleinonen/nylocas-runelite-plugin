@@ -336,22 +336,22 @@ final class EventWebsocket
 	static final class Frame
 	{
 		String type;
-		Boolean own;
 
 		@SerializedName("team_name")
 		String teamName;
 
-		@SerializedName("player_name")
-		String playerName;
-
 		@SerializedName("tile_id")
 		long tileId;
 
-		@SerializedName("tile_title")
-		String tileTitle;
-
 		String item;
+		int approved;
+		int pending;
 		Boolean complete;
+		boolean approval;
+
+		@SerializedName("open_row")
+		Integer openRow;
+
 		String leader;
 		Boolean winner;
 		String place;

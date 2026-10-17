@@ -13,6 +13,7 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,6 +77,12 @@ final class EventPanel extends PluginPanel
 	private final JPanel gridHost = new JPanel();
 	private final JPanel detail = new JPanel();
 	private final Map<JPanel, EventTile> cells = new HashMap<>();
+	private final List<EventTile> knownTiles = new ArrayList<>();
+	private int boardRows;
+	private int boardCols;
+	private int openRow;
+	private int rowTicket;
+	private boolean refreshingRow;
 	private Map<Integer, String> itemNames = Map.of();
 	private Map<Integer, AsyncBufferedImage> itemImages = Map.of();
 	private Map<Long, TileIcons.Picture> pictures = Map.of();
@@ -295,39 +302,91 @@ final class EventPanel extends PluginPanel
 		updateSessionButton();
 	}
 
-	void showBoard(EventBoard board, Map<Integer, String> names, Map<Integer, AsyncBufferedImage> images, Map<Long, TileIcons.Picture> tilePictures)
+	void showBoard(EventBoard board, Map<Integer, String> names, Map<Integer, AsyncBufferedImage> images, Map<Long, TileIcons.Picture> tilePictures, boolean reopenSocket, int rowTicket)
 	{
-		if (stopped || !acceptBoard)
+		if (stopped || !acceptBoard || (!reopenSocket && rowTicket != this.rowTicket))
 		{
 			return;
 		}
 		fetching = false;
 		connected = true;
+		refreshingRow = false;
 		status.setText(teamLabel(board));
 		showRank(board);
 		itemNames = names == null ? Map.of() : names;
 		itemImages = images == null ? Map.of() : images;
 		pictures = tilePictures == null ? Map.of() : tilePictures;
+		knownTiles.clear();
+		if (board != null && board.tiles != null)
+		{
+			for (EventTile tile : board.tiles)
+			{
+				if (tile != null)
+				{
+					knownTiles.add(tile);
+				}
+			}
+		}
+		boardRows = board == null ? 0 : board.rows;
+		boardCols = board == null ? 0 : board.cols;
+		openRow = board == null ? 0 : board.openRow;
+		selectedCell = null;
+		paintGrid();
+		updateSessionButton();
+		if (reopenSocket)
+		{
+			plugin.openWebsocket(board);
+		}
+	}
+
+	void rowRefreshFailed()
+	{
+		refreshingRow = false;
+	}
+
+	void noteOpenRow(int next)
+	{
+		if (stopped || !connected || next == openRow)
+		{
+			return;
+		}
+		if (next > openRow)
+		{
+			rowTicket++;
+			refreshingRow = false;
+			openRow = next;
+			long selectedId = selectedTileId();
+			paintGrid();
+			reselect(selectedId);
+			return;
+		}
+		if (refreshingRow)
+		{
+			return;
+		}
+		refreshingRow = true;
+		plugin.refreshEvent(next, rowTicket);
+	}
+
+	private void paintGrid()
+	{
 		selectedCell = null;
 		cells.clear();
 		gridHost.removeAll();
 		detail.removeAll();
-		int rows = board == null ? 0 : board.rows;
-		int cols = board == null ? 0 : board.cols;
-		if (rows <= 0 || cols <= 0)
+		if (boardRows <= 0 || boardCols <= 0)
 		{
 			detail.add(wrappingLabel("No board on this event", false));
 		}
 		else
 		{
-			BoardGrid grid = new BoardGrid(rows, cols);
+			BoardGrid grid = new BoardGrid(boardRows, boardCols);
 			grid.fit(boardWidth());
-			int openRow = board.openRow;
-			for (int row = 0; row < rows; row++)
+			for (int row = 0; row < boardRows; row++)
 			{
-				for (int col = 0; col < cols; col++)
+				for (int col = 0; col < boardCols; col++)
 				{
-					EventTile tile = tileAt(board.tiles, row, col);
+					EventTile tile = tileAt(knownTiles, row, col);
 					if (row < openRow || tile == null)
 					{
 						grid.add(lockedCell(tile == null && row >= openRow));
@@ -345,8 +404,33 @@ final class EventPanel extends PluginPanel
 		detail.repaint();
 		revalidate();
 		repaint();
-		updateSessionButton();
-		plugin.openWebsocket(board);
+	}
+
+	private long selectedTileId()
+	{
+		if (selectedCell == null)
+		{
+			return -1;
+		}
+		EventTile tile = cells.get(selectedCell);
+		return tile == null ? -1 : tile.id;
+	}
+
+	private void reselect(long tileId)
+	{
+		if (tileId < 0)
+		{
+			return;
+		}
+		for (Map.Entry<JPanel, EventTile> entry : cells.entrySet())
+		{
+			EventTile tile = entry.getValue();
+			if (tile != null && tile.id == tileId)
+			{
+				select(entry.getKey());
+				return;
+			}
+		}
 	}
 
 	private int boardWidth()
@@ -474,6 +558,11 @@ final class EventPanel extends PluginPanel
 	{
 		selectedCell = null;
 		cells.clear();
+		knownTiles.clear();
+		boardRows = 0;
+		boardCols = 0;
+		openRow = 0;
+		refreshingRow = false;
 		itemNames = Map.of();
 		itemImages = Map.of();
 		pictures = Map.of();
@@ -942,6 +1031,12 @@ final class EventPanel extends PluginPanel
 		showRank(board);
 	}
 
+	String tileTitle(long tileId)
+	{
+		EventTile tile = tileById(tileId);
+		return tile == null ? "" : TileText.tileTitle(tile);
+	}
+
 	String itemLabel(long tileId, String itemKey)
 	{
 		EventTile tile = tileById(tileId);
@@ -958,7 +1053,7 @@ final class EventPanel extends PluginPanel
 		return TileText.catalogName(itemKey);
 	}
 
-	void applyOwn(long tileId, String itemKey, boolean complete)
+	void applyProgress(long tileId, String itemKey, int approved, int pending, boolean complete)
 	{
 		if (stopped)
 		{
@@ -977,15 +1072,13 @@ final class EventPanel extends PluginPanel
 				{
 					if (item != null && itemKey != null && itemKey.equals(item.key))
 					{
-						item.approved++;
+						item.approved = approved;
+						item.pending = pending;
 					}
 				}
 			}
 			tile.complete = complete;
-			if (!complete)
-			{
-				tile.partial = true;
-			}
+			tile.partial = !complete && approvedCount(tile) > 0;
 			JPanel cell = entry.getKey();
 			String tip = tileTooltip(tile);
 			cell.setBackground(tileColor(tile));
@@ -1006,6 +1099,23 @@ final class EventPanel extends PluginPanel
 			}
 			return;
 		}
+	}
+
+	private static int approvedCount(EventTile tile)
+	{
+		if (tile == null || tile.items == null)
+		{
+			return 0;
+		}
+		int count = 0;
+		for (EventItem item : tile.items)
+		{
+			if (item != null)
+			{
+				count += item.approved;
+			}
+		}
+		return count;
 	}
 
 	private EventTile tileById(long tileId)

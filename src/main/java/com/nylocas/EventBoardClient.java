@@ -46,6 +46,7 @@ final class EventBoardClient
 	private final List<Call> imageCalls = new ArrayList<>();
 	private Call fetchCall;
 	private volatile boolean running;
+	private String sessionKey = "";
 	private volatile List<EventTile> tiles = List.of();
 	private volatile List<EventPlayer> players = List.of();
 	private volatile String eventName = "";
@@ -67,7 +68,7 @@ final class EventBoardClient
 		running = true;
 	}
 
-	void noteApproval(long tileId, String itemKey, boolean complete)
+	void noteProgress(long tileId, String itemKey, int approved, int pending, boolean complete)
 	{
 		for (EventTile tile : tiles)
 		{
@@ -81,17 +82,31 @@ final class EventBoardClient
 				{
 					if (item != null && itemKey != null && itemKey.equals(item.key))
 					{
-						item.approved++;
+						item.approved = approved;
+						item.pending = pending;
 					}
 				}
 			}
 			tile.complete = complete;
-			if (!complete)
-			{
-				tile.partial = true;
-			}
+			tile.partial = !complete && approvedOn(tile);
 			return;
 		}
+	}
+
+	private static boolean approvedOn(EventTile tile)
+	{
+		if (tile.items == null)
+		{
+			return false;
+		}
+		for (EventItem item : tile.items)
+		{
+			if (item != null && item.approved > 0)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	void clearSession()
@@ -110,6 +125,7 @@ final class EventBoardClient
 		eventPassword = "";
 		eventLoaded = false;
 		eventStarted = false;
+		sessionKey = "";
 	}
 
 	void stop()
@@ -130,6 +146,90 @@ final class EventBoardClient
 		eventPassword = "";
 		eventLoaded = false;
 		eventStarted = false;
+		sessionKey = "";
+	}
+
+	void refresh(EventPanel panel, int openRow, int rowTicket)
+	{
+		String key = sessionKey;
+		if (!running || panel == null || key == null || key.isEmpty())
+		{
+			if (panel != null)
+			{
+				SwingUtilities.invokeLater(panel::rowRefreshFailed);
+			}
+			return;
+		}
+		int ticket = generation.get();
+		Request request = new Request.Builder()
+			.url(NylocasPlugin.API_BASE + "/plugin/event/" + hashKey(key) + "?open_row=" + openRow)
+			.header("Accept", "application/json")
+			.build();
+		okHttpClient.newCall(request).enqueue(new Callback()
+		{
+			@Override
+			public void onFailure(Call call, IOException error)
+			{
+				if (call.isCanceled() || !running || ticket != generation.get())
+				{
+					return;
+				}
+				log.debug("Refresh event failed", error);
+				SwingUtilities.invokeLater(panel::rowRefreshFailed);
+			}
+
+			@Override
+			public void onResponse(Call call, Response response) throws IOException
+			{
+				try (Response ignored = response)
+				{
+					if (call.isCanceled() || !running || ticket != generation.get())
+					{
+						return;
+					}
+					String body = response.body() == null ? "" : response.body().string();
+					if (!response.isSuccessful())
+					{
+						log.debug("Refresh event {}", response.code());
+						SwingUtilities.invokeLater(panel::rowRefreshFailed);
+						return;
+					}
+					deliver(panel, gson.fromJson(body, EventBoard.class), ticket, false, rowTicket);
+				}
+			}
+		});
+	}
+
+	private void deliver(EventPanel panel, EventBoard board, int ticket, boolean reopen, int rowTicket)
+	{
+		List<EventTile> next = new ArrayList<>();
+		if (board != null && board.tiles != null)
+		{
+			for (EventTile tile : board.tiles)
+			{
+				if (tile != null)
+				{
+					next.add(tile);
+				}
+			}
+		}
+		if (!running || ticket != generation.get())
+		{
+			return;
+		}
+		// The panel keeps the fetched tiles. Proof reservations stay on this copy until the next refresh.
+		tiles = NylocasPlugin.copyTiles(next);
+		players = copyPlayers(board);
+		eventName = board == null || board.eventName == null ? "" : board.eventName;
+		teamName = board == null || board.teamName == null ? "" : board.teamName;
+		eventPassword = passwordOf(board);
+		eventStarted = board != null && board.eventStarted;
+		eventLoaded = true;
+		if (!running || ticket != generation.get())
+		{
+			return;
+		}
+		loadPictures(next, ticket, imagesByUrl -> showLoaded(panel, board, next, imagesByUrl, ticket, reopen, rowTicket));
 	}
 
 	List<EventTile> tiles()
@@ -204,6 +304,7 @@ final class EventBoardClient
 			panel.showStatus("Enable 'Connect to nylocas.com'");
 			return false;
 		}
+		sessionKey = key;
 		int ticket = generation.incrementAndGet();
 		cancelImages();
 		if (fetchCall != null)
@@ -249,46 +350,7 @@ final class EventBoardClient
 						return;
 					}
 					EventBoard board = gson.fromJson(body, EventBoard.class);
-					List<EventTile> next = new ArrayList<>();
-					if (board != null && board.tiles != null)
-					{
-						for (EventTile tile : board.tiles)
-						{
-							if (tile != null)
-							{
-								next.add(tile);
-							}
-						}
-					}
-					if (!running || ticket != generation.get())
-					{
-						return;
-					}
-					// The panel keeps the fetched tiles. Proof reservations stay on this copy until the next refresh.
-					tiles = NylocasPlugin.copyTiles(next);
-					players = copyPlayers(board);
-					eventName = board == null || board.eventName == null ? "" : board.eventName;
-					teamName = board == null || board.teamName == null ? "" : board.teamName;
-					eventPassword = passwordOf(board);
-					eventStarted = board != null && board.eventStarted;
-					eventLoaded = true;
-					if (!running)
-					{
-						tiles = List.of();
-						players = List.of();
-						eventName = "";
-						teamName = "";
-						eventPassword = "";
-						eventLoaded = false;
-						eventStarted = false;
-						return;
-					}
-					if (ticket != generation.get())
-					{
-						return;
-					}
-					EventBoard loaded = board;
-					loadPictures(next, ticket, imagesByUrl -> showLoaded(panel, loaded, next, imagesByUrl, ticket));
+					deliver(panel, board, ticket, true, 0);
 				}
 			}
 		});
@@ -401,7 +463,7 @@ final class EventBoardClient
 		});
 	}
 
-	private void showLoaded(EventPanel panel, EventBoard loaded, List<EventTile> boardTiles, Map<String, BufferedImage> imagesByUrl, int ticket)
+	private void showLoaded(EventPanel panel, EventBoard loaded, List<EventTile> boardTiles, Map<String, BufferedImage> imagesByUrl, int ticket, boolean reopen, int rowTicket)
 	{
 		if (!running || ticket != generation.get())
 		{
@@ -470,7 +532,7 @@ final class EventBoardClient
 					log.debug("Item image {}", id, ex);
 				}
 			}
-			SwingUtilities.invokeLater(() -> panel.showBoard(loaded, names, images, pictures));
+			SwingUtilities.invokeLater(() -> panel.showBoard(loaded, names, images, pictures, reopen, rowTicket));
 		});
 	}
 

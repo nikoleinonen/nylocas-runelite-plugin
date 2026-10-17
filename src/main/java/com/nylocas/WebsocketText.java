@@ -15,7 +15,7 @@ final class WebsocketText
 		String line = accent(teamName, accent) + "'s drop " + accent(item, accent) + " got approved";
 		if (complete)
 		{
-			line += " and that completed tile: " + accent(tileTitle, accent);
+			line += " and that completed the tile: " + accent(tileTitle, accent);
 		}
 		return line;
 	}

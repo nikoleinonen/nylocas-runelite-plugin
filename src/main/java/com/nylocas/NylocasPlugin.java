@@ -279,6 +279,19 @@ public class NylocasPlugin extends Plugin
 		return board.fetch(key, panel, config.connect());
 	}
 
+	void refreshEvent(int openRow, int rowTicket)
+	{
+		if (board != null)
+		{
+			board.refresh(panel, openRow, rowTicket);
+		}
+	}
+
+	private String teamName()
+	{
+		return board == null || board.teamName() == null ? "" : board.teamName();
+	}
+
 	void endSession()
 	{
 		if (websocket != null)
@@ -293,11 +306,11 @@ public class NylocasPlugin extends Plugin
 
 	void openWebsocket(EventBoard event)
 	{
-		if (websocket == null || event == null || !config.receiveNotifications())
+		if (websocket == null || event == null || !config.connectWebsocket())
 		{
 			return;
 		}
-		websocket.open(teamKey(), config.receiveRank(), config.receiveOwn(), config.receiveEnemy(), event.startsAt, event.endsAt);
+		websocket.open(teamKey(), true, true, config.receiveEnemy(), event.startsAt, event.endsAt);
 	}
 
 	void websocketEnded()
@@ -315,37 +328,58 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
+		if ("progress".equals(frame.type))
+		{
+			boolean complete = Boolean.TRUE.equals(frame.complete);
+			if (frame.approval && config.receiveOwn())
+			{
+				chat(WebsocketText.approved(teamName(), itemLabel(frame), complete, tileTitle(frame.tileId), accentColor(true)));
+			}
+			EventPanel current = panel;
+			if (current != null)
+			{
+				current.applyProgress(frame.tileId, frame.item, frame.approved, frame.pending, complete);
+				if (frame.openRow != null)
+				{
+					current.noteOpenRow(frame.openRow);
+				}
+			}
+			if (board != null)
+			{
+				board.noteProgress(frame.tileId, frame.item, frame.approved, frame.pending, complete);
+			}
+			return;
+		}
 		if ("approved".equals(frame.type))
 		{
 			String item = itemLabel(frame);
 			String team = frame.teamName == null ? "" : frame.teamName;
-			String title = frame.tileTitle == null ? "" : frame.tileTitle;
 			boolean complete = Boolean.TRUE.equals(frame.complete);
-			boolean own = Boolean.TRUE.equals(frame.own);
-			chat(WebsocketText.approved(team, item, complete, title, accentColor(own)));
-			if (own)
-			{
-				EventPanel current = panel;
-				if (current != null)
-				{
-					current.applyOwn(frame.tileId, frame.item, complete);
-				}
-				if (board != null)
-				{
-					board.noteApproval(frame.tileId, frame.item, complete);
-				}
-			}
+			chat(WebsocketText.approved(team, item, complete, tileTitle(frame.tileId), accentColor(false)));
 			return;
 		}
 		if ("rank".equals(frame.type))
 		{
-			chat(WebsocketText.rank(frame.leader, Boolean.TRUE.equals(frame.winner), accentColor(ownLeader(frame.leader))));
+			if (config.receiveRank())
+			{
+				chat(WebsocketText.rank(frame.leader, Boolean.TRUE.equals(frame.winner), accentColor(ownLeader(frame.leader))));
+			}
 			EventPanel current = panel;
 			if (current != null)
 			{
 				current.showPlace(frame.place);
 			}
 		}
+	}
+
+	private String tileTitle(long tileId)
+	{
+		EventPanel current = panel;
+		if (current == null)
+		{
+			return "";
+		}
+		return current.tileTitle(tileId);
 	}
 
 	private String itemLabel(EventWebsocket.Frame frame)
