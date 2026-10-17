@@ -49,6 +49,7 @@ final class EventBoardClient
 	private volatile List<EventTile> tiles = List.of();
 	private volatile List<EventPlayer> players = List.of();
 	private volatile String eventName = "";
+	private volatile String teamName = "";
 	private volatile String eventPassword = "";
 	private volatile boolean eventLoaded;
 	private volatile boolean eventStarted;
@@ -105,6 +106,7 @@ final class EventBoardClient
 		tiles = List.of();
 		players = List.of();
 		eventName = "";
+		teamName = "";
 		eventPassword = "";
 		eventLoaded = false;
 		eventStarted = false;
@@ -124,6 +126,7 @@ final class EventBoardClient
 		tiles = List.of();
 		players = List.of();
 		eventName = "";
+		teamName = "";
 		eventPassword = "";
 		eventLoaded = false;
 		eventStarted = false;
@@ -142,6 +145,11 @@ final class EventBoardClient
 	String eventName()
 	{
 		return eventName;
+	}
+
+	String teamName()
+	{
+		return teamName;
 	}
 
 	String eventPassword()
@@ -260,6 +268,7 @@ final class EventBoardClient
 					tiles = NylocasPlugin.copyTiles(next);
 					players = copyPlayers(board);
 					eventName = board == null || board.eventName == null ? "" : board.eventName;
+					teamName = board == null || board.teamName == null ? "" : board.teamName;
 					eventPassword = passwordOf(board);
 					eventStarted = board != null && board.eventStarted;
 					eventLoaded = true;
@@ -268,6 +277,7 @@ final class EventBoardClient
 						tiles = List.of();
 						players = List.of();
 						eventName = "";
+						teamName = "";
 						eventPassword = "";
 						eventLoaded = false;
 						eventStarted = false;

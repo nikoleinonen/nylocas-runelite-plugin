@@ -1,24 +1,49 @@
 package com.nylocas;
 
+import java.awt.Color;
+import net.runelite.client.util.ColorUtil;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
 public class WebsocketTextTest
 {
+	private static final Color OWN = new Color(0x3DDC97);
+	private static final Color ENEMY = new Color(0xFF6B6B);
+
 	@Test
 	public void writesApprovalLines()
 	{
-		assertEquals("Blue's drop Bandos hilt got approved", WebsocketText.approved("Blue", "Bandos hilt", false, "Bandos hilt"));
-		assertEquals("Blue's drop Bandos hilt got approved and that completed Bandos hilt", WebsocketText.approved("Blue", "Bandos hilt", true, "Bandos hilt"));
+		String team = ColorUtil.wrapWithColorTag("Blue", OWN);
+		String item = ColorUtil.wrapWithColorTag("Bandos hilt", OWN);
+		String tile = ColorUtil.wrapWithColorTag("Bandos hilt", OWN);
+		assertEquals(team + "'s drop " + item + " got approved", WebsocketText.approved("Blue", "Bandos hilt", false, "Bandos hilt", OWN));
+		assertEquals(team + "'s drop " + item + " got approved and that completed tile: " + tile, WebsocketText.approved("Blue", "Bandos hilt", true, "Bandos hilt", OWN));
+	}
+
+	@Test
+	public void colorsEnemyNamesSeparately()
+	{
+		String team = ColorUtil.wrapWithColorTag("Red", ENEMY);
+		String item = ColorUtil.wrapWithColorTag("Armadyl hilt", ENEMY);
+		assertEquals(team + "'s drop " + item + " got approved", WebsocketText.approved("Red", "Armadyl hilt", false, "", ENEMY));
 	}
 
 	@Test
 	public void writesRankLines()
 	{
-		assertEquals("Blue took the lead!", WebsocketText.rank("Blue", false));
-		assertEquals("Blue won the event! Congratulations!", WebsocketText.rank("Blue", true));
-		assertEquals("First place is tied.", WebsocketText.rank(null, false));
+		String leader = ColorUtil.wrapWithColorTag("Blue", OWN);
+		assertEquals(leader + " took the lead!", WebsocketText.rank("Blue", false, OWN));
+		assertEquals(leader + " won the event! Congratulations!", WebsocketText.rank("Blue", true, OWN));
+		assertEquals("First place is tied.", WebsocketText.rank(null, false, OWN));
+		assertEquals("First place is tied.", WebsocketText.rank("", false, ENEMY));
+	}
+
+	@Test
+	public void stripsTagsInsideAnAccent()
+	{
+		String leader = ColorUtil.wrapWithColorTag("Blue", ENEMY);
+		assertEquals(leader + " took the lead!", WebsocketText.rank("Blue</col><col=ffffff>", false, ENEMY));
 	}
 
 	@Test

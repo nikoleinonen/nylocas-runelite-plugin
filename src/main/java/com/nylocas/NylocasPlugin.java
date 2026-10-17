@@ -46,7 +46,7 @@ import okhttp3.OkHttpClient;
 )
 public class NylocasPlugin extends Plugin
 {
-	static final String API_BASE = "http://127.0.0.1:8080";
+	static final String API_BASE = "https://api.nylocas.com";
 	private static final String TEAM_KEY_FILE = "team-key";
 
 	@Inject
@@ -321,8 +321,9 @@ public class NylocasPlugin extends Plugin
 			String team = frame.teamName == null ? "" : frame.teamName;
 			String title = frame.tileTitle == null ? "" : frame.tileTitle;
 			boolean complete = Boolean.TRUE.equals(frame.complete);
-			chat(WebsocketText.approved(team, item, complete, title));
-			if (Boolean.TRUE.equals(frame.own))
+			boolean own = Boolean.TRUE.equals(frame.own);
+			chat(WebsocketText.approved(team, item, complete, title, accentColor(own)));
+			if (own)
 			{
 				EventPanel current = panel;
 				if (current != null)
@@ -338,7 +339,7 @@ public class NylocasPlugin extends Plugin
 		}
 		if ("rank".equals(frame.type))
 		{
-			chat(WebsocketText.rank(frame.leader, Boolean.TRUE.equals(frame.winner)));
+			chat(WebsocketText.rank(frame.leader, Boolean.TRUE.equals(frame.winner), accentColor(ownLeader(frame.leader))));
 			EventPanel current = panel;
 			if (current != null)
 			{
@@ -355,6 +356,21 @@ public class NylocasPlugin extends Plugin
 			return current.itemLabel(frame.tileId, frame.item);
 		}
 		return TileText.catalogName(frame.item);
+	}
+
+	private Color accentColor(boolean own)
+	{
+		return own ? config.ownTeamColor() : config.enemyTeamColor();
+	}
+
+	private boolean ownLeader(String leader)
+	{
+		if (leader == null || leader.isEmpty() || board == null)
+		{
+			return false;
+		}
+		String ours = board.teamName();
+		return ours != null && !ours.isEmpty() && ours.equals(leader);
 	}
 
 	private void chat(String line)

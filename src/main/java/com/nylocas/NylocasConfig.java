@@ -22,7 +22,7 @@ public interface NylocasConfig extends Config
 
 	@ConfigSection(
 		name = "Notifications",
-		description = "Game chat when a drop is approved or first place changes. A change applies the next time you press Connect.",
+		description = "Game chat when a drop is approved or first place changes. You must reconnect for the settings to update.",
 		position = 1
 	)
 	String notificationsSection = "notifications";
@@ -87,7 +87,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "receiveNotifications",
 		name = "Receive notifications",
-		description = "Open a live connection for the kinds below when you press Connect",
+		description = "Receive real-time chat notifications about important events.",
 		position = 0,
 		section = notificationsSection
 	)
@@ -98,8 +98,8 @@ public interface NylocasConfig extends Config
 
 	@ConfigItem(
 		keyName = "receiveRank",
-		name = "Receive rank changes",
-		description = "Chat when unique first place changes, including when a team wins",
+		name = "Position changes",
+		description = "Get a chat notification whenever a team takes the lead.",
 		position = 1,
 		section = notificationsSection
 	)
@@ -110,8 +110,8 @@ public interface NylocasConfig extends Config
 
 	@ConfigItem(
 		keyName = "receiveOwn",
-		name = "Receive own team submissions",
-		description = "Chat when this team's drop is approved, and update that tile",
+		name = "Own team submissions",
+		description = "Get a chat notification when your team's submission is approved.",
 		position = 2,
 		section = notificationsSection
 	)
@@ -122,14 +122,38 @@ public interface NylocasConfig extends Config
 
 	@ConfigItem(
 		keyName = "receiveEnemy",
-		name = "Receive enemy team submissions",
-		description = "Chat when another team's drop is approved",
+		name = "Enemy team submissions",
+		description = "Get a chat notification when an opponent team's submission is approved.",
 		position = 3,
 		section = notificationsSection
 	)
 	default boolean receiveEnemy()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+		keyName = "ownTeamColor",
+		name = "Own team color",
+		description = "Accent for your team name, its item, and its tile, and for the leader when your team is in front. The rest of the line stays the normal chat color.",
+		position = 4,
+		section = notificationsSection
+	)
+	default Color ownTeamColor()
+	{
+		return new Color(0x3DDC97);
+	}
+
+	@ConfigItem(
+		keyName = "enemyTeamColor",
+		name = "Enemy team color",
+		description = "Accent for an opponent's team name, item, and tile, and for the leader when another team is in front. The rest of the line stays the normal chat color.",
+		position = 5,
+		section = notificationsSection
+	)
+	default Color enemyTeamColor()
+	{
+		return new Color(0xFF6B6B);
 	}
 
 	@ConfigItem(
