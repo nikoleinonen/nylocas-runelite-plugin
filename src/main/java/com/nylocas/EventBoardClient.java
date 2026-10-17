@@ -6,6 +6,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -122,6 +125,26 @@ final class EventBoardClient
 		return name;
 	}
 
+	static String hashKey(String key)
+	{
+		try
+		{
+			byte[] sum = MessageDigest.getInstance("SHA-256").digest(key.getBytes(StandardCharsets.UTF_8));
+			char[] hex = new char[sum.length * 2];
+			for (int i = 0; i < sum.length; i++)
+			{
+				int value = sum[i] & 0xff;
+				hex[i * 2] = "0123456789abcdef".charAt(value >>> 4);
+				hex[i * 2 + 1] = "0123456789abcdef".charAt(value & 0x0f);
+			}
+			return new String(hex);
+		}
+		catch (NoSuchAlgorithmException ex)
+		{
+			throw new IllegalStateException(ex);
+		}
+	}
+
 	boolean fetch(String key, EventPanel panel, boolean connect)
 	{
 		if (!connect)
@@ -136,7 +159,7 @@ final class EventBoardClient
 			fetchCall.cancel();
 		}
 		Request request = new Request.Builder()
-			.url(NylocasPlugin.API_BASE + "/plugin/event/" + key)
+			.url(NylocasPlugin.API_BASE + "/plugin/event/" + hashKey(key))
 			.header("Accept", "application/json")
 			.build();
 		fetchCall = okHttpClient.newCall(request);
