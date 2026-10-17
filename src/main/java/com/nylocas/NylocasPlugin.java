@@ -88,7 +88,7 @@ public class NylocasPlugin extends Plugin
 	private volatile EventPanel panel;
 	private volatile boolean running;
 	private EventBoardClient board;
-	private EventLive live;
+	private EventWebsocket websocket;
 	private ProofUploader proofs;
 	private String raidChatName;
 	private long raidChatAt;
@@ -105,7 +105,7 @@ public class NylocasPlugin extends Plugin
 	{
 		running = true;
 		board = new EventBoardClient(okHttpClient, gson, clientThread, itemManager);
-		live = new EventLive(okHttpClient, gson, executor, this);
+		websocket = new EventWebsocket(okHttpClient, gson, executor, this);
 		proofs = new ProofUploader(client, clientThread, drawManager, executor, okHttpClient);
 		board.start();
 		proofs.start();
@@ -133,9 +133,9 @@ public class NylocasPlugin extends Plugin
 			overlayManager.remove(overlay);
 			overlay = null;
 		}
-		if (live != null)
+		if (websocket != null)
 		{
-			live.stop();
+			websocket.stop();
 		}
 		if (board != null)
 		{
@@ -281,9 +281,9 @@ public class NylocasPlugin extends Plugin
 
 	void endSession()
 	{
-		if (live != null)
+		if (websocket != null)
 		{
-			live.stop();
+			websocket.stop();
 		}
 		if (board != null)
 		{
@@ -291,16 +291,16 @@ public class NylocasPlugin extends Plugin
 		}
 	}
 
-	void openLive(EventBoard event)
+	void openWebsocket(EventBoard event)
 	{
-		if (live == null || event == null || !config.receiveNotifications())
+		if (websocket == null || event == null || !config.receiveNotifications())
 		{
 			return;
 		}
-		live.open(teamKey(), config.receiveRank(), config.receiveOwn(), config.receiveEnemy(), event.startsAt, event.endsAt);
+		websocket.open(teamKey(), config.receiveRank(), config.receiveOwn(), config.receiveEnemy(), event.startsAt, event.endsAt);
 	}
 
-	void liveEnded()
+	void websocketEnded()
 	{
 		EventPanel current = panel;
 		if (running && current != null)
@@ -309,7 +309,7 @@ public class NylocasPlugin extends Plugin
 		}
 	}
 
-	void onLiveFrame(EventLive.Frame frame)
+	void onWebsocketFrame(EventWebsocket.Frame frame)
 	{
 		if (!running || frame == null || frame.type == null)
 		{
@@ -321,7 +321,7 @@ public class NylocasPlugin extends Plugin
 			String team = frame.teamName == null ? "" : frame.teamName;
 			String title = frame.tileTitle == null ? "" : frame.tileTitle;
 			boolean complete = Boolean.TRUE.equals(frame.complete);
-			chat(LiveText.approved(team, item, complete, title));
+			chat(WebsocketText.approved(team, item, complete, title));
 			if (Boolean.TRUE.equals(frame.own))
 			{
 				EventPanel current = panel;
@@ -338,7 +338,7 @@ public class NylocasPlugin extends Plugin
 		}
 		if ("rank".equals(frame.type))
 		{
-			chat(LiveText.rank(frame.leader, Boolean.TRUE.equals(frame.winner)));
+			chat(WebsocketText.rank(frame.leader, Boolean.TRUE.equals(frame.winner)));
 			EventPanel current = panel;
 			if (current != null)
 			{
@@ -347,7 +347,7 @@ public class NylocasPlugin extends Plugin
 		}
 	}
 
-	private String itemLabel(EventLive.Frame frame)
+	private String itemLabel(EventWebsocket.Frame frame)
 	{
 		EventPanel current = panel;
 		if (current != null)

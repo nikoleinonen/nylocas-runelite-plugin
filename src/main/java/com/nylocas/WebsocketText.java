@@ -1,8 +1,8 @@
 package com.nylocas;
 
-final class LiveText
+final class WebsocketText
 {
-	private LiveText()
+	private WebsocketText()
 	{
 	}
 

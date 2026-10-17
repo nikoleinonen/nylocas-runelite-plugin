@@ -346,7 +346,7 @@ final class EventPanel extends PluginPanel
 		revalidate();
 		repaint();
 		updateSessionButton();
-		plugin.openLive(board);
+		plugin.openWebsocket(board);
 	}
 
 	private int boardWidth()

@@ -16,7 +16,7 @@ import okhttp3.WebSocket;
 import okhttp3.WebSocketListener;
 
 @Slf4j
-final class EventLive
+final class EventWebsocket
 {
 	private static final int[] BACKOFF_SECONDS = {1, 2, 4, 8, 16, 32, 60};
 
@@ -37,7 +37,7 @@ final class EventLive
 	private ScheduledFuture<?> pending;
 	private WebSocket socket;
 
-	EventLive(OkHttpClient http, Gson gson, ScheduledExecutorService executor, NylocasPlugin plugin)
+	EventWebsocket(OkHttpClient http, Gson gson, ScheduledExecutorService executor, NylocasPlugin plugin)
 	{
 		this.http = http.newBuilder()
 			.pingInterval(60, TimeUnit.SECONDS)
@@ -61,9 +61,9 @@ final class EventLive
 		}
 		else
 		{
-			throw new IllegalArgumentException("no live url for " + apiBase);
+			throw new IllegalArgumentException("no websocket url for " + apiBase);
 		}
-		return base + "/plugin/live/" + keyHash
+		return base + "/plugin/websocket/" + keyHash
 			+ "?rank=" + (rank ? "1" : "0")
 			+ "&own=" + (own ? "1" : "0")
 			+ "&enemy=" + (enemy ? "1" : "0");
@@ -171,14 +171,14 @@ final class EventLive
 				}
 				catch (RuntimeException ex)
 				{
-					log.debug("Live frame", ex);
+					log.debug("Websocket frame", ex);
 					return;
 				}
 				if (frame == null || frame.type == null)
 				{
 					return;
 				}
-				SwingUtilities.invokeLater(() -> plugin.onLiveFrame(frame));
+				SwingUtilities.invokeLater(() -> plugin.onWebsocketFrame(frame));
 			}
 
 			@Override
@@ -233,7 +233,7 @@ final class EventLive
 				}
 				if (!(error instanceof IOException))
 				{
-					log.debug("Live socket {}", status, error);
+					log.debug("Websocket socket {}", status, error);
 				}
 				int retry = status == 429 || status == 503 ? retryAfter(response) : 0;
 				reconnect(retry);
@@ -249,7 +249,7 @@ final class EventLive
 		}
 		stopped = true;
 		cancelPending();
-		SwingUtilities.invokeLater(plugin::liveEnded);
+		SwingUtilities.invokeLater(plugin::websocketEnded);
 	}
 
 	private void schedule(long delayMillis, Runnable task)
