@@ -195,11 +195,19 @@ public class NylocasPlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		if (!NylocasConfig.GROUP.equals(event.getGroup()) || !NylocasConfig.TEAM_KEY.equals(event.getKey()))
+		if (!NylocasConfig.GROUP.equals(event.getGroup()))
 		{
 			return;
 		}
-		SwingUtilities.invokeLater(this::refreshPanelKey);
+		if (NylocasConfig.TEAM_KEY.equals(event.getKey()))
+		{
+			SwingUtilities.invokeLater(this::refreshPanelKey);
+			return;
+		}
+		if (NylocasConfig.CONNECT_WEBSOCKET.equals(event.getKey()))
+		{
+			SwingUtilities.invokeLater(this::refreshSessionButton);
+		}
 	}
 
 	private void refreshPanelKey()
@@ -208,6 +216,15 @@ public class NylocasPlugin extends Plugin
 		if (running && current != null)
 		{
 			current.onTeamKeyChanged();
+		}
+	}
+
+	private void refreshSessionButton()
+	{
+		EventPanel current = panel;
+		if (running && current != null)
+		{
+			current.onWebsocketChanged();
 		}
 	}
 
@@ -287,6 +304,11 @@ public class NylocasPlugin extends Plugin
 		return board.fetch(key, panel, config.connect());
 	}
 
+	boolean websocketEnabled()
+	{
+		return config.connectWebsocket();
+	}
+
 	void refreshEvent(int openRow, int rowTicket)
 	{
 		if (board != null)
@@ -346,7 +368,16 @@ public class NylocasPlugin extends Plugin
 
 	void openWebsocket(EventBoard event)
 	{
-		if (websocket == null || event == null || !config.connectWebsocket())
+		if (websocket == null)
+		{
+			return;
+		}
+		if (!config.connectWebsocket())
+		{
+			websocket.stop();
+			return;
+		}
+		if (event == null)
 		{
 			return;
 		}

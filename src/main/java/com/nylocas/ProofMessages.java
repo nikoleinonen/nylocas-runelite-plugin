@@ -2,10 +2,10 @@ package com.nylocas;
 
 final class ProofMessages
 {
-	static final String MANUAL = "Failed to submit proof automatically. Please submit it manually.";
-	static final String TILE_COMPLETE = "Failed to submit proof automatically, tile is completed";
-	static final String RATE_LIMITED = "Rate limited, if you think this appeared with normal use, report it on github.";
-	static final String EVENT_ENDED = "The event has ended.";
+	static final String MANUAL = "NCE - Failed to submit proof automatically. Please submit it manually.";
+	static final String TILE_COMPLETE = "NCE - Failed to submit proof automatically, tile is completed";
+	static final String RATE_LIMITED = "NCE - Rate limited, if you think this appeared with normal use, report it on github.";
+	static final String EVENT_ENDED = "NCE - The event has ended.";
 
 	private ProofMessages()
 	{

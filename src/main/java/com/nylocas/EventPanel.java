@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.LayoutManager;
@@ -88,6 +89,7 @@ final class EventPanel extends PluginPanel
 	private Map<Long, TileIcons.Picture> pictures = Map.of();
 	private JPanel selectedCell;
 	private boolean fetching;
+	private boolean refreshingBoard;
 	private boolean connected;
 	private volatile boolean acceptBoard;
 	private volatile boolean stopped;
@@ -99,7 +101,8 @@ final class EventPanel extends PluginPanel
 		super();
 		this.plugin = plugin;
 		setBorder(new EmptyBorder(0, 0, PluginPanel.BORDER_OFFSET, 0));
-		getScrollPane().setBorder(BorderFactory.createMatteBorder(1, 1, 1, 0, HEADER_LINE));
+		// The header and the connect row draw the top and bottom edges. This pane only keeps the left edge.
+		getScrollPane().setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, HEADER_LINE));
 		// The bar keeps its column even when the list fits, so the board and item cards do not shift.
 		getScrollPane().setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
 
@@ -118,16 +121,15 @@ final class EventPanel extends PluginPanel
 		JPanel buttons = new ShrinkWidth(new GridLayout(1, 3));
 		buttons.setOpaque(false);
 		buttons.setBorder(new EmptyBorder(4, 0, 4, 0));
-		buttons.add(linkButton("website.png", "Website", WEBSITE_URL));
-		buttons.add(linkButton("discord.png", "Discord", DISCORD_URL));
-		buttons.add(linkButton("github.png", "GitHub", GITHUB_URL));
+		buttons.add(linkCell("website.png", "Website", WEBSITE_URL));
+		buttons.add(linkCell("discord.png", "Discord", DISCORD_URL));
+		buttons.add(linkCell("github.png", "GitHub", GITHUB_URL));
 
 		JPanel titleRow = new JPanel(new BorderLayout());
 		titleRow.setBackground(HEADER_COLOR);
-		titleRow.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, HEADER_LINE));
+		titleRow.setBorder(BorderFactory.createMatteBorder(1, 1, 1, 0, HEADER_LINE));
 		titleRow.add(titleWrap, BorderLayout.WEST);
 		titleRow.add(buttons, BorderLayout.CENTER);
-		add(titleRow);
 
 		status.setForeground(ColorScheme.TEXT_COLOR);
 		rank.setForeground(ColorScheme.TEXT_COLOR);
@@ -162,10 +164,16 @@ final class EventPanel extends PluginPanel
 		sessionButton.setForeground(ColorScheme.TEXT_COLOR);
 		sessionButton.addActionListener(event -> session());
 		JPanel sessionRow = new JPanel(new BorderLayout());
-		sessionRow.setOpaque(false);
-		sessionRow.setBorder(new EmptyBorder(8, PluginPanel.BORDER_OFFSET, 0, PluginPanel.BORDER_OFFSET));
+		sessionRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		sessionRow.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(1, 1, 1, 0, HEADER_LINE),
+			new EmptyBorder(8, PluginPanel.BORDER_OFFSET, 8, PluginPanel.BORDER_OFFSET)
+		));
 		sessionRow.add(sessionButton, BorderLayout.CENTER);
-		add(sessionRow);
+		JPanel wrapped = getWrappedPanel();
+		wrapped.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		wrapped.add(titleRow, BorderLayout.NORTH);
+		wrapped.add(sessionRow, BorderLayout.SOUTH);
 
 		onTeamKeyChanged();
 	}
@@ -195,6 +203,23 @@ final class EventPanel extends PluginPanel
 		updateSessionButton();
 	}
 
+	void onWebsocketChanged()
+	{
+		if (stopped)
+		{
+			return;
+		}
+		updateSessionButton();
+	}
+
+	private JPanel linkCell(String resource, String tooltip, String url)
+	{
+		JPanel cell = new JPanel(new GridBagLayout());
+		cell.setOpaque(false);
+		cell.add(linkButton(resource, tooltip, url));
+		return cell;
+	}
+
 	private JButton linkButton(String resource, String tooltip, String url)
 	{
 		BufferedImage image = ImageUtil.resizeImage(ImageUtil.loadImageResource(getClass(), resource), LINK_ICON, LINK_ICON);
@@ -203,6 +228,9 @@ final class EventPanel extends PluginPanel
 		button.setFocusable(false);
 		button.setOpaque(false);
 		button.setContentAreaFilled(false);
+		button.setHorizontalAlignment(JButton.CENTER);
+		button.setVerticalAlignment(JButton.CENTER);
+		button.setMargin(new Insets(0, 0, 0, 0));
 		SwingUtil.removeButtonDecorations(button);
 		button.putClientProperty("FlatLaf.style", ICON_STYLE);
 		button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -217,7 +245,7 @@ final class EventPanel extends PluginPanel
 
 	private void session()
 	{
-		if (connected)
+		if (connected && plugin.websocketEnabled())
 		{
 			disconnect();
 			return;
@@ -227,15 +255,21 @@ final class EventPanel extends PluginPanel
 		{
 			return;
 		}
+		boolean refresh = connected;
 		fetching = true;
+		refreshingBoard = refresh;
 		acceptBoard = true;
 		updateSessionButton();
 		status.setText("Fetching...");
-		clearRank();
-		clearBoard();
+		if (!refresh)
+		{
+			clearRank();
+			clearBoard();
+		}
 		if (!plugin.fetchEvent(key, this))
 		{
 			fetching = false;
+			refreshingBoard = false;
 			updateSessionButton();
 			return;
 		}
@@ -246,6 +280,7 @@ final class EventPanel extends PluginPanel
 	{
 		connected = false;
 		fetching = false;
+		refreshingBoard = false;
 		acceptBoard = false;
 		plugin.endSession();
 		clearRank();
@@ -258,6 +293,7 @@ final class EventPanel extends PluginPanel
 	{
 		stopped = true;
 		connected = false;
+		refreshingBoard = false;
 		acceptBoard = false;
 		if (cooldownTimer != null)
 		{
@@ -294,6 +330,13 @@ final class EventPanel extends PluginPanel
 			return;
 		}
 		fetching = false;
+		if (refreshingBoard)
+		{
+			refreshingBoard = false;
+			status.setText(message);
+			updateSessionButton();
+			return;
+		}
 		connected = false;
 		acceptBoard = false;
 		status.setText(message);
@@ -309,6 +352,7 @@ final class EventPanel extends PluginPanel
 			return;
 		}
 		fetching = false;
+		refreshingBoard = false;
 		connected = true;
 		refreshingRow = false;
 		status.setText(teamLabel(board));
@@ -530,13 +574,7 @@ final class EventPanel extends PluginPanel
 			return;
 		}
 		detail.add(wrappingLabel(TileText.tileTitle(tile), true));
-		detail.add(statusLabel(tile));
-		String requirement = TileText.requirement(tile);
-		if (!requirement.isEmpty())
-		{
-			detail.add(Box.createVerticalStrut(6));
-			detail.add(wrappingLabel(requirement, false));
-		}
+		detail.add(statusLine(tile));
 		if (tile.items != null)
 		{
 			for (EventItem item : tile.items)
@@ -756,6 +794,21 @@ final class EventPanel extends PluginPanel
 		return MUTED_TEXT;
 	}
 
+	private static JPanel statusLine(EventTile tile)
+	{
+		JPanel row = new FitWidth(new BorderLayout(8, 0));
+		row.setOpaque(false);
+		row.add(statusLabel(tile), BorderLayout.CENTER);
+		String requirement = TileText.requirement(tile);
+		if (!requirement.isEmpty())
+		{
+			JLabel label = new JLabel(requirement);
+			label.setHorizontalAlignment(JLabel.RIGHT);
+			row.add(label, BorderLayout.EAST);
+		}
+		return row;
+	}
+
 	private static JLabel statusLabel(EventTile tile)
 	{
 		String progress = TileText.progress(tile);
@@ -764,8 +817,8 @@ final class EventPanel extends PluginPanel
 		{
 			html += " - " + escape(progress);
 		}
-		JLabel label = new JLabel("<html><body style='width: " + TEXT_WIDTH + "px'>" + html + "</body></html>");
-		label.setAlignmentX(LEFT_ALIGNMENT);
+		JLabel label = new ShrinkLabel("<html><nobr>" + html + "</nobr></html>");
+		label.setVerticalAlignment(JLabel.CENTER);
 		return label;
 	}
 
@@ -1143,7 +1196,21 @@ final class EventPanel extends PluginPanel
 
 	private void updateSessionButton()
 	{
-		sessionButton.setText(connected ? "Disconnect" : "Connect");
-		sessionButton.setEnabled(!stopped && !fetching && (connected || (!currentKey().isEmpty() && !coolingDown())));
+		boolean socket = plugin.websocketEnabled();
+		if (socket)
+		{
+			sessionButton.setText(connected ? "Disconnect" : "Connect");
+		}
+		else
+		{
+			sessionButton.setText(connected ? "Refresh event" : "Fetch event");
+		}
+		boolean busy = stopped || fetching;
+		if (connected && socket)
+		{
+			sessionButton.setEnabled(!busy);
+			return;
+		}
+		sessionButton.setEnabled(!busy && !currentKey().isEmpty() && !coolingDown());
 	}
 }

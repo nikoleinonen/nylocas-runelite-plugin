@@ -12,6 +12,10 @@ final class TileText
 
 	static String tileTitle(EventTile tile)
 	{
+		if (itemCount(tile) == 0)
+		{
+			return "Free tile";
+		}
 		if (tile.title == null || tile.title.isEmpty())
 		{
 			return "Tile " + tile.id;

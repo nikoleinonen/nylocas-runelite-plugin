@@ -12,6 +12,7 @@ public interface NylocasConfig extends Config
 {
 	String GROUP = "nylocas-clan-events";
 	String TEAM_KEY = "teamKey";
+	String CONNECT_WEBSOCKET = "connectWebsocket";
 
 	@ConfigSection(
 		name = "Event",
@@ -48,9 +49,9 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "connectWebsocket",
+		keyName = CONNECT_WEBSOCKET,
 		name = "Connect to WebSocket",
-		description = "Keep your team's board up to date while the session is connected. Position changes and your team's approvals update the panel. Takes effect on the next Connect.",
+		description = "Keep your team's board up to date while the session is connected. Position changes and your team's approvals update the panel. Takes effect the next time you load the event.",
 		position = 1,
 		section = eventSection
 	)
