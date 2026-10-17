@@ -136,8 +136,7 @@ final class EventBoardClient
 			fetchCall.cancel();
 		}
 		Request request = new Request.Builder()
-			.url(NylocasPlugin.API_BASE + "/plugin/event")
-			.header("Authorization", "Bearer " + key)
+			.url(NylocasPlugin.API_BASE + "/plugin/event/" + key)
 			.header("Accept", "application/json")
 			.build();
 		fetchCall = okHttpClient.newCall(request);
