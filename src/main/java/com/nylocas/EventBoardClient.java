@@ -126,7 +126,7 @@ final class EventBoardClient
 	{
 		if (!connect)
 		{
-			panel.showStatus("Turn on Connect to nylocas.com in the plugin settings");
+			panel.showStatus("Enable 'Connect to nylocas.com'");
 			return false;
 		}
 		int ticket = generation.incrementAndGet();
