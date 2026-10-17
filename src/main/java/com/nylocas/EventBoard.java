@@ -20,6 +20,12 @@ final class EventBoard
 	@SerializedName("event_started")
 	boolean eventStarted;
 
+	@SerializedName("starts_at")
+	String startsAt;
+
+	@SerializedName("ends_at")
+	String endsAt;
+
 	String rank;
 
 	@SerializedName("open_row")

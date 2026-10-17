@@ -61,7 +61,6 @@ final class EventPanel extends PluginPanel
 	private static final Color HEADER_COLOR = new Color(0x1e1e1e);
 	private static final Color HEADER_LINE = new Color(0x171717);
 	private static final int COOLDOWN_MS = 60_000;
-	private static final int REFRESH_ICON = 16;
 	private static final int LINK_ICON = 16;
 	private static final String ICON_STYLE = "border: 3,0,3,0,#0000";
 	private static final String DISCORD_URL = "https://discord.gg/3T23DAehU5";
@@ -70,15 +69,7 @@ final class EventPanel extends PluginPanel
 	private static final String KEY_HINT = "Set team key in config";
 
 	private final NylocasPlugin plugin;
-	private final JButton refreshButton = new JButton()
-	{
-		@Override
-		public boolean contains(int x, int y)
-		{
-			return isEnabled() && super.contains(x, y);
-		}
-	};
-	private final JPanel refreshHost = new JPanel(new BorderLayout());
+	private final JButton sessionButton = new JButton("Connect");
 	private final JLabel status = new ShrinkLabel(" ");
 	private final JLabel rank = new JLabel();
 	private final JPanel statusRow = new ShrinkWidth(new BorderLayout(8, 0));
@@ -90,7 +81,8 @@ final class EventPanel extends PluginPanel
 	private Map<Long, TileIcons.Picture> pictures = Map.of();
 	private JPanel selectedCell;
 	private boolean fetching;
-	private boolean fetched;
+	private boolean connected;
+	private volatile boolean acceptBoard;
 	private volatile boolean stopped;
 	private long cooldownUntil;
 	private Timer cooldownTimer;
@@ -108,17 +100,6 @@ final class EventPanel extends PluginPanel
 		JLabel title = new JLabel("<html><b>Nylocas <span style='color: " + accent + "'>Clan Events</span></b></html>");
 		title.setForeground(ColorScheme.TEXT_COLOR);
 
-		BufferedImage icon = ImageUtil.resizeImage(ImageUtil.loadImageResource(getClass(), "refresh.png"), REFRESH_ICON, REFRESH_ICON);
-		refreshButton.setIcon(new ImageIcon(icon));
-		refreshButton.setFocusable(false);
-		refreshButton.setOpaque(false);
-		refreshButton.setContentAreaFilled(false);
-		SwingUtil.removeButtonDecorations(refreshButton);
-		refreshButton.putClientProperty("FlatLaf.style", ICON_STYLE);
-		refreshButton.addActionListener(event -> fetch());
-		refreshHost.setOpaque(false);
-		refreshHost.add(refreshButton);
-
 		JPanel titleWrap = new JPanel(new BorderLayout());
 		titleWrap.setOpaque(false);
 		titleWrap.setBorder(BorderFactory.createCompoundBorder(
@@ -127,10 +108,9 @@ final class EventPanel extends PluginPanel
 		));
 		titleWrap.add(title, BorderLayout.CENTER);
 
-		JPanel buttons = new ShrinkWidth(new GridLayout(1, 4));
+		JPanel buttons = new ShrinkWidth(new GridLayout(1, 3));
 		buttons.setOpaque(false);
 		buttons.setBorder(new EmptyBorder(4, 0, 4, 0));
-		buttons.add(refreshHost);
 		buttons.add(linkButton("website.png", "Website", WEBSITE_URL));
 		buttons.add(linkButton("discord.png", "Discord", DISCORD_URL));
 		buttons.add(linkButton("github.png", "GitHub", GITHUB_URL));
@@ -170,23 +150,28 @@ final class EventPanel extends PluginPanel
 		detail.setBorder(new EmptyBorder(8, PluginPanel.BORDER_OFFSET, 0, PluginPanel.BORDER_OFFSET));
 		add(detail);
 
-		onTeamKeyChanged();
-	}
+		sessionButton.setFocusable(false);
+		sessionButton.setBackground(HEADER_COLOR);
+		sessionButton.setForeground(ColorScheme.TEXT_COLOR);
+		sessionButton.addActionListener(event -> session());
+		JPanel sessionRow = new JPanel(new BorderLayout());
+		sessionRow.setOpaque(false);
+		sessionRow.setBorder(new EmptyBorder(8, PluginPanel.BORDER_OFFSET, 0, PluginPanel.BORDER_OFFSET));
+		sessionRow.add(sessionButton, BorderLayout.CENTER);
+		add(sessionRow);
 
-	@Override
-	public void onActivate()
-	{
-		if (stopped || fetched)
-		{
-			return;
-		}
-		fetched = fetch();
+		onTeamKeyChanged();
 	}
 
 	void onTeamKeyChanged()
 	{
 		if (stopped)
 		{
+			return;
+		}
+		if (connected || fetching || !cells.isEmpty())
+		{
+			disconnect();
 			return;
 		}
 		if (currentKey().isEmpty())
@@ -200,7 +185,7 @@ final class EventPanel extends PluginPanel
 		{
 			status.setText(" ");
 		}
-		refreshButton();
+		updateSessionButton();
 	}
 
 	private JButton linkButton(String resource, String tooltip, String url)
@@ -223,28 +208,50 @@ final class EventPanel extends PluginPanel
 		return plugin.teamKey();
 	}
 
-	private boolean fetch()
+	private void session()
 	{
+		if (connected)
+		{
+			disconnect();
+			return;
+		}
 		String key = currentKey();
 		if (key.isEmpty() || fetching || coolingDown())
 		{
-			return false;
+			return;
 		}
 		fetching = true;
+		acceptBoard = true;
+		updateSessionButton();
 		status.setText("Fetching...");
 		clearRank();
 		clearBoard();
 		if (!plugin.fetchEvent(key, this))
 		{
-			return false;
+			fetching = false;
+			updateSessionButton();
+			return;
 		}
 		startCooldown();
-		return true;
+	}
+
+	private void disconnect()
+	{
+		connected = false;
+		fetching = false;
+		acceptBoard = false;
+		plugin.endSession();
+		clearRank();
+		clearBoard();
+		status.setText(currentKey().isEmpty() ? KEY_HINT : " ");
+		updateSessionButton();
 	}
 
 	void stop()
 	{
 		stopped = true;
+		connected = false;
+		acceptBoard = false;
 		if (cooldownTimer != null)
 		{
 			cooldownTimer.stop();
@@ -261,11 +268,11 @@ final class EventPanel extends PluginPanel
 		cooldownTimer = new Timer(COOLDOWN_MS, event ->
 		{
 			cooldownUntil = 0;
-			refreshButton();
+			updateSessionButton();
 		});
 		cooldownTimer.setRepeats(false);
 		cooldownTimer.start();
-		refreshButton();
+		updateSessionButton();
 	}
 
 	private boolean coolingDown()
@@ -280,19 +287,22 @@ final class EventPanel extends PluginPanel
 			return;
 		}
 		fetching = false;
+		connected = false;
+		acceptBoard = false;
 		status.setText(message);
 		clearRank();
 		clearBoard();
-		refreshButton();
+		updateSessionButton();
 	}
 
 	void showBoard(EventBoard board, Map<Integer, String> names, Map<Integer, AsyncBufferedImage> images, Map<Long, TileIcons.Picture> tilePictures)
 	{
-		if (stopped)
+		if (stopped || !acceptBoard)
 		{
 			return;
 		}
 		fetching = false;
+		connected = true;
 		status.setText(teamLabel(board));
 		showRank(board);
 		itemNames = names == null ? Map.of() : names;
@@ -335,7 +345,8 @@ final class EventPanel extends PluginPanel
 		detail.repaint();
 		revalidate();
 		repaint();
-		refreshButton();
+		updateSessionButton();
+		plugin.openLive(board);
 	}
 
 	private int boardWidth()
@@ -910,20 +921,108 @@ final class EventPanel extends PluginPanel
 		return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
 	}
 
-	private String refreshTooltip()
+	void socketFinished()
 	{
-		if (coolingDown())
+		if (stopped || !connected)
 		{
-			return "Refresh (1 min cooldown)";
+			return;
 		}
-		return "Refresh event";
+		connected = false;
+		updateSessionButton();
 	}
 
-	private void refreshButton()
+	void showPlace(String place)
 	{
-		refreshButton.setEnabled(!fetching && !coolingDown() && !currentKey().isEmpty());
-		String tip = refreshTooltip();
-		refreshButton.setToolTipText(tip);
-		refreshHost.setToolTipText(tip);
+		if (stopped || place == null || place.isBlank())
+		{
+			return;
+		}
+		EventBoard board = new EventBoard();
+		board.rank = place;
+		showRank(board);
+	}
+
+	String itemLabel(long tileId, String itemKey)
+	{
+		EventTile tile = tileById(tileId);
+		if (tile != null && tile.items != null)
+		{
+			for (EventItem item : tile.items)
+			{
+				if (item != null && itemKey != null && itemKey.equals(item.key))
+				{
+					return TileText.itemName(item, itemNames::get);
+				}
+			}
+		}
+		return TileText.catalogName(itemKey);
+	}
+
+	void applyOwn(long tileId, String itemKey, boolean complete)
+	{
+		if (stopped)
+		{
+			return;
+		}
+		for (Map.Entry<JPanel, EventTile> entry : cells.entrySet())
+		{
+			EventTile tile = entry.getValue();
+			if (tile == null || tile.id != tileId)
+			{
+				continue;
+			}
+			if (tile.items != null)
+			{
+				for (EventItem item : tile.items)
+				{
+					if (item != null && itemKey != null && itemKey.equals(item.key))
+					{
+						item.approved++;
+					}
+				}
+			}
+			tile.complete = complete;
+			if (!complete)
+			{
+				tile.partial = true;
+			}
+			JPanel cell = entry.getKey();
+			String tip = tileTooltip(tile);
+			cell.setBackground(tileColor(tile));
+			cell.setToolTipText(tip);
+			if (cell.getComponentCount() == 1 && cell.getComponent(0) instanceof TileFace)
+			{
+				((TileFace) cell.getComponent(0)).setToolTipText(tip);
+			}
+			if (cell == selectedCell)
+			{
+				cell.setBorder(tileBorder(tile));
+				selectedCell = null;
+				select(cell);
+			}
+			else
+			{
+				cell.setBorder(tileBorder(tile));
+			}
+			return;
+		}
+	}
+
+	private EventTile tileById(long tileId)
+	{
+		for (EventTile tile : cells.values())
+		{
+			if (tile != null && tile.id == tileId)
+			{
+				return tile;
+			}
+		}
+		return null;
+	}
+
+	private void updateSessionButton()
+	{
+		sessionButton.setText(connected ? "Disconnect" : "Connect");
+		sessionButton.setEnabled(!stopped && !fetching && (connected || (!currentKey().isEmpty() && !coolingDown())));
 	}
 }

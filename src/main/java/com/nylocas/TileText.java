@@ -156,7 +156,7 @@ final class TileText
 		return item.pending + " pending";
 	}
 
-	private static String catalogName(String key)
+	static String catalogName(String key)
 	{
 		if (key == null || key.isEmpty())
 		{

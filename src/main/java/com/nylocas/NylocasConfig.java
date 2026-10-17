@@ -21,9 +21,16 @@ public interface NylocasConfig extends Config
 	String eventSection = "event";
 
 	@ConfigSection(
+		name = "Notifications",
+		description = "Game chat when a drop is approved or first place changes. A change applies the next time you press Connect.",
+		position = 1
+	)
+	String notificationsSection = "notifications";
+
+	@ConfigSection(
 		name = "Overlay",
 		description = "Event password and UTC time on the game screen. Password comes from the backend, no need to set it manually.",
-		position = 1
+		position = 2
 	)
 	String overlaySection = "overlay";
 
@@ -75,6 +82,54 @@ public interface NylocasConfig extends Config
 	default String teamKey()
 	{
 		return "";
+	}
+
+	@ConfigItem(
+		keyName = "receiveNotifications",
+		name = "Receive notifications",
+		description = "Open a live connection for the kinds below when you press Connect",
+		position = 0,
+		section = notificationsSection
+	)
+	default boolean receiveNotifications()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "receiveRank",
+		name = "Receive rank changes",
+		description = "Chat when unique first place changes, including when a team wins",
+		position = 1,
+		section = notificationsSection
+	)
+	default boolean receiveRank()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "receiveOwn",
+		name = "Receive own team submissions",
+		description = "Chat when this team's drop is approved, and update that tile",
+		position = 2,
+		section = notificationsSection
+	)
+	default boolean receiveOwn()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "receiveEnemy",
+		name = "Receive enemy team submissions",
+		description = "Chat when another team's drop is approved",
+		position = 3,
+		section = notificationsSection
+	)
+	default boolean receiveEnemy()
+	{
+		return false;
 	}
 
 	@ConfigItem(

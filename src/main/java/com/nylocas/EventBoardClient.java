@@ -66,6 +66,50 @@ final class EventBoardClient
 		running = true;
 	}
 
+	void noteApproval(long tileId, String itemKey, boolean complete)
+	{
+		for (EventTile tile : tiles)
+		{
+			if (tile == null || tile.id != tileId)
+			{
+				continue;
+			}
+			if (tile.items != null)
+			{
+				for (EventItem item : tile.items)
+				{
+					if (item != null && itemKey != null && itemKey.equals(item.key))
+					{
+						item.approved++;
+					}
+				}
+			}
+			tile.complete = complete;
+			if (!complete)
+			{
+				tile.partial = true;
+			}
+			return;
+		}
+	}
+
+	void clearSession()
+	{
+		generation.incrementAndGet();
+		if (fetchCall != null)
+		{
+			fetchCall.cancel();
+			fetchCall = null;
+		}
+		cancelImages();
+		tiles = List.of();
+		players = List.of();
+		eventName = "";
+		eventPassword = "";
+		eventLoaded = false;
+		eventStarted = false;
+	}
+
 	void stop()
 	{
 		running = false;

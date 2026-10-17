@@ -88,6 +88,7 @@ public class NylocasPlugin extends Plugin
 	private volatile EventPanel panel;
 	private volatile boolean running;
 	private EventBoardClient board;
+	private EventLive live;
 	private ProofUploader proofs;
 	private String raidChatName;
 	private long raidChatAt;
@@ -104,6 +105,7 @@ public class NylocasPlugin extends Plugin
 	{
 		running = true;
 		board = new EventBoardClient(okHttpClient, gson, clientThread, itemManager);
+		live = new EventLive(okHttpClient, gson, executor, this);
 		proofs = new ProofUploader(client, clientThread, drawManager, executor, okHttpClient);
 		board.start();
 		proofs.start();
@@ -130,6 +132,10 @@ public class NylocasPlugin extends Plugin
 		{
 			overlayManager.remove(overlay);
 			overlay = null;
+		}
+		if (live != null)
+		{
+			live.stop();
 		}
 		if (board != null)
 		{
@@ -271,6 +277,89 @@ public class NylocasPlugin extends Plugin
 	boolean fetchEvent(String key, EventPanel panel)
 	{
 		return board.fetch(key, panel, config.connect());
+	}
+
+	void endSession()
+	{
+		if (live != null)
+		{
+			live.stop();
+		}
+		if (board != null)
+		{
+			board.clearSession();
+		}
+	}
+
+	void openLive(EventBoard event)
+	{
+		if (live == null || event == null || !config.receiveNotifications())
+		{
+			return;
+		}
+		live.open(teamKey(), config.receiveRank(), config.receiveOwn(), config.receiveEnemy(), event.startsAt, event.endsAt);
+	}
+
+	void liveEnded()
+	{
+		EventPanel current = panel;
+		if (running && current != null)
+		{
+			current.socketFinished();
+		}
+	}
+
+	void onLiveFrame(EventLive.Frame frame)
+	{
+		if (!running || frame == null || frame.type == null)
+		{
+			return;
+		}
+		if ("approved".equals(frame.type))
+		{
+			String item = itemLabel(frame);
+			String team = frame.teamName == null ? "" : frame.teamName;
+			String title = frame.tileTitle == null ? "" : frame.tileTitle;
+			boolean complete = Boolean.TRUE.equals(frame.complete);
+			chat(LiveText.approved(team, item, complete, title));
+			if (Boolean.TRUE.equals(frame.own))
+			{
+				EventPanel current = panel;
+				if (current != null)
+				{
+					current.applyOwn(frame.tileId, frame.item, complete);
+				}
+				if (board != null)
+				{
+					board.noteApproval(frame.tileId, frame.item, complete);
+				}
+			}
+			return;
+		}
+		if ("rank".equals(frame.type))
+		{
+			chat(LiveText.rank(frame.leader, Boolean.TRUE.equals(frame.winner)));
+			EventPanel current = panel;
+			if (current != null)
+			{
+				current.showPlace(frame.place);
+			}
+		}
+	}
+
+	private String itemLabel(EventLive.Frame frame)
+	{
+		EventPanel current = panel;
+		if (current != null)
+		{
+			return current.itemLabel(frame.tileId, frame.item);
+		}
+		return TileText.catalogName(frame.item);
+	}
+
+	private void chat(String line)
+	{
+		clientThread.invoke(() -> client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", line, null));
 	}
 
 	@Subscribe

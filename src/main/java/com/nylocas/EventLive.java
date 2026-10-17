@@ -1,0 +1,364 @@
+package com.nylocas;
+
+import com.google.gson.Gson;
+import com.google.gson.annotations.SerializedName;
+import java.io.IOException;
+import java.time.Instant;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import javax.swing.SwingUtilities;
+import lombok.extern.slf4j.Slf4j;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.WebSocket;
+import okhttp3.WebSocketListener;
+
+@Slf4j
+final class EventLive
+{
+	private static final int[] BACKOFF_SECONDS = {1, 2, 4, 8, 16, 32, 60};
+
+	private final OkHttpClient http;
+	private final Gson gson;
+	private final ScheduledExecutorService executor;
+	private final NylocasPlugin plugin;
+
+	private int generation;
+	private boolean stopped = true;
+	private int step;
+	private String key = "";
+	private boolean rank;
+	private boolean own;
+	private boolean enemy;
+	private Instant startsAt;
+	private Instant endsAt;
+	private ScheduledFuture<?> pending;
+	private WebSocket socket;
+
+	EventLive(OkHttpClient http, Gson gson, ScheduledExecutorService executor, NylocasPlugin plugin)
+	{
+		this.http = http.newBuilder()
+			.pingInterval(60, TimeUnit.SECONDS)
+			.readTimeout(150, TimeUnit.SECONDS)
+			.build();
+		this.gson = gson;
+		this.executor = executor;
+		this.plugin = plugin;
+	}
+
+	static String url(String apiBase, String keyHash, boolean rank, boolean own, boolean enemy)
+	{
+		String base;
+		if ("https://api.nylocas.com".equals(apiBase))
+		{
+			base = "wss://ws.nylocas.com";
+		}
+		else if ("http://127.0.0.1:8080".equals(apiBase))
+		{
+			base = "ws://127.0.0.1:8090";
+		}
+		else
+		{
+			throw new IllegalArgumentException("no live url for " + apiBase);
+		}
+		return base + "/plugin/live/" + keyHash
+			+ "?rank=" + (rank ? "1" : "0")
+			+ "&own=" + (own ? "1" : "0")
+			+ "&enemy=" + (enemy ? "1" : "0");
+	}
+
+	void open(String teamKey, boolean rank, boolean own, boolean enemy, String startsAt, String endsAt)
+	{
+		stop();
+		if (teamKey == null || teamKey.isEmpty() || (!rank && !own && !enemy))
+		{
+			return;
+		}
+		this.stopped = false;
+		this.step = 0;
+		this.key = teamKey;
+		this.rank = rank;
+		this.own = own;
+		this.enemy = enemy;
+		this.startsAt = parseTime(startsAt);
+		this.endsAt = parseTime(endsAt);
+		if (this.endsAt == null || !Instant.now().isBefore(this.endsAt))
+		{
+			return;
+		}
+		if (this.startsAt != null && Instant.now().isBefore(this.startsAt))
+		{
+			schedule(this.startsAt.toEpochMilli() - Instant.now().toEpochMilli(), this::connectNow);
+			return;
+		}
+		connectNow();
+	}
+
+	void stop()
+	{
+		generation++;
+		stopped = true;
+		cancelPending();
+		WebSocket current = socket;
+		socket = null;
+		if (current != null)
+		{
+			current.close(1000, "");
+		}
+	}
+
+	private void reconnect(int retryAfterSeconds)
+	{
+		if (stopped)
+		{
+			return;
+		}
+		if (endsAt == null || !Instant.now().isBefore(endsAt))
+		{
+			finish();
+			return;
+		}
+		if (startsAt != null && Instant.now().isBefore(startsAt))
+		{
+			schedule(startsAt.toEpochMilli() - Instant.now().toEpochMilli(), this::connectNow);
+			return;
+		}
+		int backoff = BACKOFF_SECONDS[step];
+		if (step < BACKOFF_SECONDS.length - 1)
+		{
+			step++;
+		}
+		long delay = Math.max(backoff, Math.max(0, retryAfterSeconds)) * 1000L;
+		schedule(delay, this::connectNow);
+	}
+
+	private void connectNow()
+	{
+		if (stopped || endsAt == null || !Instant.now().isBefore(endsAt))
+		{
+			finish();
+			return;
+		}
+		int ticket = generation;
+		String address = url(NylocasPlugin.API_BASE, EventBoardClient.hashKey(key), rank, own, enemy);
+		Request request = new Request.Builder().url(address).build();
+		socket = http.newWebSocket(request, new WebSocketListener()
+		{
+			@Override
+			public void onOpen(WebSocket webSocket, Response response)
+			{
+				if (ticket != generation)
+				{
+					webSocket.close(1000, "");
+					return;
+				}
+				step = 0;
+			}
+
+			@Override
+			public void onMessage(WebSocket webSocket, String text)
+			{
+				if (ticket != generation)
+				{
+					return;
+				}
+				Frame frame;
+				try
+				{
+					frame = gson.fromJson(text, Frame.class);
+				}
+				catch (RuntimeException ex)
+				{
+					log.debug("Live frame", ex);
+					return;
+				}
+				if (frame == null || frame.type == null)
+				{
+					return;
+				}
+				SwingUtilities.invokeLater(() -> plugin.onLiveFrame(frame));
+			}
+
+			@Override
+			public void onClosing(WebSocket webSocket, int code, String reason)
+			{
+				webSocket.close(code, reason);
+			}
+
+			@Override
+			public void onClosed(WebSocket webSocket, int code, String reason)
+			{
+				if (ticket != generation)
+				{
+					return;
+				}
+				socket = null;
+				if (stopped)
+				{
+					return;
+				}
+				if (code == 1000)
+				{
+					finish();
+					return;
+				}
+				reconnect(0);
+			}
+
+			@Override
+			public void onFailure(WebSocket webSocket, Throwable error, Response response)
+			{
+				if (ticket != generation)
+				{
+					return;
+				}
+				socket = null;
+				if (stopped)
+				{
+					return;
+				}
+				int status = response == null ? 0 : response.code();
+				String message = errorText(response);
+				if (status == 401)
+				{
+					finish();
+					return;
+				}
+				if (status == 400 && "event has not started".equals(message))
+				{
+					reconnect(0);
+					return;
+				}
+				if (!(error instanceof IOException))
+				{
+					log.debug("Live socket {}", status, error);
+				}
+				int retry = status == 429 || status == 503 ? retryAfter(response) : 0;
+				reconnect(retry);
+			}
+		});
+	}
+
+	private void finish()
+	{
+		if (stopped)
+		{
+			return;
+		}
+		stopped = true;
+		cancelPending();
+		SwingUtilities.invokeLater(plugin::liveEnded);
+	}
+
+	private void schedule(long delayMillis, Runnable task)
+	{
+		cancelPending();
+		int ticket = generation;
+		pending = executor.schedule(() ->
+		{
+			if (ticket == generation && !stopped)
+			{
+				task.run();
+			}
+		}, Math.max(0, delayMillis), TimeUnit.MILLISECONDS);
+	}
+
+	private void cancelPending()
+	{
+		if (pending != null)
+		{
+			pending.cancel(false);
+			pending = null;
+		}
+	}
+
+	private String errorText(Response response)
+	{
+		if (response == null || response.body() == null)
+		{
+			return "";
+		}
+		try
+		{
+			ErrorBody body = gson.fromJson(response.body().string(), ErrorBody.class);
+			return body == null || body.error == null ? "" : body.error;
+		}
+		catch (Exception ex)
+		{
+			return "";
+		}
+	}
+
+	private static int retryAfter(Response response)
+	{
+		if (response == null)
+		{
+			return 60;
+		}
+		String raw = response.header("Retry-After");
+		if (raw == null)
+		{
+			return 60;
+		}
+		try
+		{
+			int seconds = Integer.parseInt(raw.trim());
+			if (seconds < 0 || seconds > 3600)
+			{
+				return 60;
+			}
+			return seconds;
+		}
+		catch (NumberFormatException ex)
+		{
+			return 60;
+		}
+	}
+
+	private static Instant parseTime(String raw)
+	{
+		if (raw == null || raw.isEmpty())
+		{
+			return null;
+		}
+		try
+		{
+			return Instant.parse(raw);
+		}
+		catch (RuntimeException ex)
+		{
+			return null;
+		}
+	}
+
+	static final class Frame
+	{
+		String type;
+		Boolean own;
+
+		@SerializedName("team_name")
+		String teamName;
+
+		@SerializedName("player_name")
+		String playerName;
+
+		@SerializedName("tile_id")
+		long tileId;
+
+		@SerializedName("tile_title")
+		String tileTitle;
+
+		String item;
+		Boolean complete;
+		String leader;
+		Boolean winner;
+		String place;
+	}
+
+	private static final class ErrorBody
+	{
+		String error;
+	}
+}
