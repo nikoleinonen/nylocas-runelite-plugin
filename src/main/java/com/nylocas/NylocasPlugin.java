@@ -479,7 +479,7 @@ public class NylocasPlugin extends Plugin
 			boolean complete = Boolean.TRUE.equals(frame.complete);
 			if (frame.approval && config.receiveOwn())
 			{
-				chat(WebsocketText.approved(teamName(), itemLabel(frame), complete, tileTitle(frame.tileId), accentColor(true)));
+				chat(WebsocketText.approved(teamName(), itemLabel(frame), complete, tileTitle(frame.tileId), accentColor(true), config.dropColor(), config.tileColor()));
 			}
 			EventPanel current = panel;
 			if (current != null)
@@ -501,7 +501,7 @@ public class NylocasPlugin extends Plugin
 			String item = itemLabel(frame);
 			String team = frame.teamName == null ? "" : frame.teamName;
 			boolean complete = Boolean.TRUE.equals(frame.complete);
-			chat(WebsocketText.approved(team, item, complete, tileTitle(frame.tileId), accentColor(false)));
+			chat(WebsocketText.approved(team, item, complete, tileTitle(frame.tileId), accentColor(false), config.dropColor(), config.tileColor()));
 			return;
 		}
 		if ("code".equals(frame.type))
@@ -632,6 +632,7 @@ public class NylocasPlugin extends Plugin
 				uploadProofs = false;
 			}
 		}
+		notifyEventDrops(tiles, sourceName, lootReceived.getItems(), uploadProofs, targets);
 		if (!saveLocally && !uploadProofs)
 		{
 			return;
@@ -648,6 +649,32 @@ public class NylocasPlugin extends Plugin
 	{
 		String label = board.itemName(itemId);
 		return label == null ? Integer.toString(itemId) : label;
+	}
+
+	private void notifyEventDrops(List<EventTile> tiles, String sourceName, Collection<ItemStack> stacks, boolean autoSubmitted, List<AllowedDrops.ProofTarget> submitted)
+	{
+		if (!config.eventDrop())
+		{
+			return;
+		}
+		if (autoSubmitted)
+		{
+			for (AllowedDrops.ProofTarget target : submitted)
+			{
+				String dropName = target.itemName == null ? "" : target.itemName;
+				chat(WebsocketText.eventDrop(dropName, TileText.tileTitle(target.tile), true, config.dropColor(), config.tileColor()));
+			}
+			return;
+		}
+		for (ItemStack stack : stacks)
+		{
+			AllowedDrops.ProofTarget target = AllowedDrops.firstProof(tiles, sourceName, stack.getId());
+			if (target == null)
+			{
+				continue;
+			}
+			chat(WebsocketText.eventDrop(itemLabel(stack.getId()), TileText.tileTitle(target.tile), false, config.dropColor(), config.tileColor()));
+		}
 	}
 
 	private List<String> dropLabels(List<EventTile> tiles, String sourceName, Collection<ItemStack> stacks)

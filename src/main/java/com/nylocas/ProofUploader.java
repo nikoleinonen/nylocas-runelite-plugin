@@ -36,7 +36,6 @@ import okhttp3.Response;
 @Slf4j
 final class ProofUploader
 {
-	private static final Color PROOF_SENT = new Color(0x10b981);
 	private static final DateTimeFormatter SHOT_STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss_SSS").withZone(ZoneId.systemDefault());
 
 	private final Client client;
@@ -251,7 +250,6 @@ final class ProofUploader
 					}
 					if (response.isSuccessful())
 					{
-						postGameMessage("Sent proof: " + ColorUtil.wrapWithColorTag(proofLabel(target), PROOF_SENT));
 						return;
 					}
 					String responseBody = response.body() == null ? "" : response.body().string();
@@ -326,15 +324,6 @@ final class ProofUploader
 		{
 			call.cancel();
 		}
-	}
-
-	private static String proofLabel(AllowedDrops.ProofTarget target)
-	{
-		if (target.tile.title != null && !target.tile.title.isEmpty())
-		{
-			return target.tile.title;
-		}
-		return target.itemName;
 	}
 
 	private void releaseReservation(AllowedDrops.ProofTarget target)

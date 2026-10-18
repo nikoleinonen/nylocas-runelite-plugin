@@ -10,12 +10,22 @@ final class WebsocketText
 	{
 	}
 
-	static String approved(String teamName, String item, boolean complete, String tileTitle, Color accent)
+	static String eventDrop(String dropName, String tileName, boolean autoSubmitted, Color dropColor, Color tileColor)
 	{
-		String line = accent(teamName, accent) + "'s drop " + accent(item, accent) + " got approved";
+		String line = "Event drop: " + accent(dropName, dropColor) + " for " + accent(tileName, tileColor);
+		if (autoSubmitted)
+		{
+			line += ", auto submitted";
+		}
+		return line;
+	}
+
+	static String approved(String teamName, String item, boolean complete, String tileTitle, Color teamColor, Color dropColor, Color tileColor)
+	{
+		String line = accent(teamName, teamColor) + "'s drop " + accent(item, dropColor) + " got approved";
 		if (complete)
 		{
-			line += " and that completed the tile: " + accent(tileTitle, accent);
+			line += " and that completed the tile: " + accent(tileTitle, tileColor);
 		}
 		return line;
 	}

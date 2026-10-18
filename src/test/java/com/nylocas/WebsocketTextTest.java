@@ -10,23 +10,34 @@ public class WebsocketTextTest
 {
 	private static final Color OWN = new Color(0x3DDC97);
 	private static final Color ENEMY = new Color(0xFF6B6B);
+	private static final Color DROP = new Color(0x10B981);
+	private static final Color TILE = new Color(0x38BDF8);
+
+	@Test
+	public void writesEventDropLines()
+	{
+		String drop = ColorUtil.wrapWithColorTag("Bandos hilt", DROP);
+		String tile = ColorUtil.wrapWithColorTag("Bandos", TILE);
+		assertEquals("Event drop: " + drop + " for " + tile, WebsocketText.eventDrop("Bandos hilt", "Bandos", false, DROP, TILE));
+		assertEquals("Event drop: " + drop + " for " + tile + ", auto submitted", WebsocketText.eventDrop("Bandos hilt", "Bandos", true, DROP, TILE));
+	}
 
 	@Test
 	public void writesApprovalLines()
 	{
 		String team = ColorUtil.wrapWithColorTag("Blue", OWN);
-		String item = ColorUtil.wrapWithColorTag("Bandos hilt", OWN);
-		String tile = ColorUtil.wrapWithColorTag("Bandos hilt", OWN);
-		assertEquals(team + "'s drop " + item + " got approved", WebsocketText.approved("Blue", "Bandos hilt", false, "Bandos hilt", OWN));
-		assertEquals(team + "'s drop " + item + " got approved and that completed tile: " + tile, WebsocketText.approved("Blue", "Bandos hilt", true, "Bandos hilt", OWN));
+		String item = ColorUtil.wrapWithColorTag("Bandos hilt", DROP);
+		String tile = ColorUtil.wrapWithColorTag("Bandos hilt", TILE);
+		assertEquals(team + "'s drop " + item + " got approved", WebsocketText.approved("Blue", "Bandos hilt", false, "Bandos hilt", OWN, DROP, TILE));
+		assertEquals(team + "'s drop " + item + " got approved and that completed the tile: " + tile, WebsocketText.approved("Blue", "Bandos hilt", true, "Bandos hilt", OWN, DROP, TILE));
 	}
 
 	@Test
 	public void colorsEnemyNamesSeparately()
 	{
 		String team = ColorUtil.wrapWithColorTag("Red", ENEMY);
-		String item = ColorUtil.wrapWithColorTag("Armadyl hilt", ENEMY);
-		assertEquals(team + "'s drop " + item + " got approved", WebsocketText.approved("Red", "Armadyl hilt", false, "", ENEMY));
+		String item = ColorUtil.wrapWithColorTag("Armadyl hilt", DROP);
+		assertEquals(team + "'s drop " + item + " got approved", WebsocketText.approved("Red", "Armadyl hilt", false, "", ENEMY, DROP, TILE));
 	}
 
 	@Test
