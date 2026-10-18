@@ -36,7 +36,6 @@ import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.DrawManager;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
-import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Filepath;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
@@ -631,7 +630,6 @@ public class NylocasPlugin extends Plugin
 		{
 			itemNames.add(itemLabel(item.getId()));
 		}
-		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", completedSourceMessage(sourceName, itemNames), null);
 		log.debug("Allowed source {} dropped {}", sourceName, itemNames);
 		List<String> labels = dropLabels(tiles, sourceName, lootReceived.getItems());
 		if (labels.isEmpty())
@@ -793,16 +791,6 @@ public class NylocasPlugin extends Plugin
 		copy.runeliteIds = item.runeliteIds == null ? null : new ArrayList<>(item.runeliteIds);
 		copy.sources = item.sources == null ? null : new ArrayList<>(item.sources);
 		return copy;
-	}
-
-	private static String completedSourceMessage(String source, List<String> items)
-	{
-		String message = "Completed allowed source: " + ColorUtil.wrapWithColorTag(source, Color.RED);
-		if (!items.isEmpty())
-		{
-			message += ", item: " + ColorUtil.wrapWithColorTag(String.join(", ", items), Color.RED);
-		}
-		return message;
 	}
 
 	private String lootSource(String lootName)
