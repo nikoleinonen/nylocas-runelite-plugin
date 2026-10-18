@@ -72,6 +72,8 @@ final class EventPanel extends PluginPanel
 
 	private final NylocasPlugin plugin;
 	private final JButton sessionButton = new JButton("Connect");
+	private final JButton reconnectButton = new JButton("Reconnect");
+	private final JPanel sessionButtons = new JPanel(new GridLayout(1, 1));
 	private final JLabel status = new ShrinkLabel(" ");
 	private final JLabel rank = new JLabel();
 	private final JPanel statusRow = new ShrinkWidth(new BorderLayout(8, 0));
@@ -164,13 +166,19 @@ final class EventPanel extends PluginPanel
 		sessionButton.setBackground(HEADER_COLOR);
 		sessionButton.setForeground(ColorScheme.TEXT_COLOR);
 		sessionButton.addActionListener(event -> session());
+		reconnectButton.setFocusable(false);
+		reconnectButton.setBackground(HEADER_COLOR);
+		reconnectButton.setForeground(ColorScheme.TEXT_COLOR);
+		reconnectButton.addActionListener(event -> reconnect());
+		sessionButtons.setOpaque(false);
+		sessionButtons.add(sessionButton);
 		JPanel sessionRow = new JPanel(new BorderLayout());
 		sessionRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		sessionRow.setBorder(BorderFactory.createCompoundBorder(
 			BorderFactory.createMatteBorder(1, 1, 1, 0, HEADER_LINE),
 			new EmptyBorder(8, PluginPanel.BORDER_OFFSET, 8, PluginPanel.BORDER_OFFSET)
 		));
-		sessionRow.add(sessionButton, BorderLayout.CENTER);
+		sessionRow.add(sessionButtons, BorderLayout.CENTER);
 		JPanel wrapped = getWrappedPanel();
 		wrapped.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		wrapped.add(titleRow, BorderLayout.NORTH);
@@ -267,6 +275,32 @@ final class EventPanel extends PluginPanel
 			clearRank();
 			clearBoard();
 		}
+		if (!plugin.fetchEvent(key, this))
+		{
+			fetching = false;
+			refreshingBoard = false;
+			updateSessionButton();
+			return;
+		}
+		startCooldown();
+	}
+
+	private void reconnect()
+	{
+		if (!connected || !plugin.websocketEnabled() || fetching || coolingDown())
+		{
+			return;
+		}
+		String key = currentKey();
+		if (key.isEmpty())
+		{
+			return;
+		}
+		fetching = true;
+		refreshingBoard = true;
+		acceptBoard = true;
+		updateSessionButton();
+		status.setText("Fetching...");
 		if (!plugin.fetchEvent(key, this))
 		{
 			fetching = false;
@@ -1222,10 +1256,27 @@ final class EventPanel extends PluginPanel
 		{
 			sessionButton.setText(connected ? "Refresh" : "Fetch event");
 		}
+		boolean showReconnect = connected && socket;
+		if (showReconnect != (reconnectButton.getParent() != null))
+		{
+			if (showReconnect)
+			{
+				sessionButtons.setLayout(new GridLayout(1, 2, 8, 0));
+				sessionButtons.add(reconnectButton);
+			}
+			else
+			{
+				sessionButtons.remove(reconnectButton);
+				sessionButtons.setLayout(new GridLayout(1, 1));
+			}
+			sessionButtons.revalidate();
+			sessionButtons.repaint();
+		}
 		boolean busy = stopped || fetching;
-		if (connected && socket)
+		if (showReconnect)
 		{
 			sessionButton.setEnabled(!busy);
+			reconnectButton.setEnabled(!busy && !currentKey().isEmpty() && !coolingDown());
 			return;
 		}
 		sessionButton.setEnabled(!busy && !currentKey().isEmpty() && !coolingDown());
