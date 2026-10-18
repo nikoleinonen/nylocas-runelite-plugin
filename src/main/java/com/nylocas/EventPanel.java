@@ -1220,7 +1220,7 @@ final class EventPanel extends PluginPanel
 		}
 		else
 		{
-			sessionButton.setText(connected ? "Refresh event" : "Fetch event");
+			sessionButton.setText(connected ? "Refresh" : "Fetch event");
 		}
 		boolean busy = stopped || fetching;
 		if (connected && socket)

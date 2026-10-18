@@ -13,15 +13,15 @@ import net.runelite.client.ui.overlay.components.LineComponent;
 import static net.runelite.api.MenuAction.RUNELITE_OVERLAY_CONFIG;
 import static net.runelite.client.ui.overlay.OverlayManager.OPTION_CONFIGURE;
 
-final class EventPasswordOverlay extends OverlayPanel
+final class EventCodeOverlay extends OverlayPanel
 {
-	private static final String NOT_STARTED = "Event has not started";
+	private static final String NOT_STARTED = "The event has not started";
 	private static final DateTimeFormatter UTC_TIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(ZoneOffset.UTC);
 
 	private final NylocasConfig config;
 	private final NylocasPlugin plugin;
 
-	EventPasswordOverlay(NylocasConfig config, NylocasPlugin plugin)
+	EventCodeOverlay(NylocasConfig config, NylocasPlugin plugin)
 	{
 		this.config = config;
 		this.plugin = plugin;
@@ -36,28 +36,50 @@ final class EventPasswordOverlay extends OverlayPanel
 		{
 			return null;
 		}
-		if (!plugin.eventLoaded())
-		{
-			return null;
-		}
-		String label = plugin.eventStarted() ? plugin.eventPassword() : NOT_STARTED;
+		String label = label(plugin.eventLoaded(), plugin.eventStarted(), plugin.eventCode(), config.eventCode());
+		String time = utcTime(Instant.now());
+		String shown = label.isEmpty() ? time : label + " " + time;
+		panelComponent.setPreferredSize(new Dimension(graphics.getFontMetrics().stringWidth(shown) + 10, 0));
 		if (label.isEmpty())
 		{
-			return null;
+			panelComponent.getChildren().add(LineComponent.builder()
+				.left(time)
+				.leftColor(config.timeColor())
+				.build());
 		}
-		String time = utcTime(Instant.now());
-		panelComponent.setPreferredSize(new Dimension(graphics.getFontMetrics().stringWidth(label + " " + time) + 10, 0));
-		panelComponent.getChildren().add(LineComponent.builder()
-			.left(label)
-			.leftColor(config.passwordColor())
-			.right(time)
-			.rightColor(config.timeColor())
-			.build());
+		else
+		{
+			panelComponent.getChildren().add(LineComponent.builder()
+				.left(label)
+				.leftColor(config.codeColor())
+				.right(time)
+				.rightColor(config.timeColor())
+				.build());
+		}
 		return super.render(graphics);
 	}
 
 	static String utcTime(Instant instant)
 	{
 		return UTC_TIME.format(instant) + " UTC";
+	}
+
+	static String label(boolean loaded, boolean started, String fetched, String manual)
+	{
+		if (loaded && !started)
+		{
+			return NOT_STARTED;
+		}
+		String fromEvent = text(fetched);
+		if (!fromEvent.isEmpty())
+		{
+			return fromEvent;
+		}
+		return text(manual);
+	}
+
+	private static String text(String value)
+	{
+		return value == null ? "" : value.trim();
 	}
 }

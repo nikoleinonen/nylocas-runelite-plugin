@@ -52,7 +52,7 @@ final class EventBoardClient
 	private volatile List<EventPlayer> players = List.of();
 	private volatile String eventName = "";
 	private volatile String teamName = "";
-	private volatile String eventPassword = "";
+	private volatile String eventCode = "";
 	private volatile boolean eventLoaded;
 	private volatile boolean eventStarted;
 	private volatile Instant startsAt;
@@ -125,7 +125,7 @@ final class EventBoardClient
 		players = List.of();
 		eventName = "";
 		teamName = "";
-		eventPassword = "";
+		eventCode = "";
 		eventLoaded = false;
 		eventStarted = false;
 		startsAt = null;
@@ -148,7 +148,7 @@ final class EventBoardClient
 		players = List.of();
 		eventName = "";
 		teamName = "";
-		eventPassword = "";
+		eventCode = "";
 		eventLoaded = false;
 		eventStarted = false;
 		startsAt = null;
@@ -229,7 +229,7 @@ final class EventBoardClient
 		players = copyPlayers(board);
 		eventName = board == null || board.eventName == null ? "" : board.eventName;
 		teamName = board == null || board.teamName == null ? "" : board.teamName;
-		eventPassword = passwordOf(board);
+		eventCode = codeOf(board);
 		eventStarted = board != null && board.eventStarted;
 		startsAt = EventClock.parse(board == null ? null : board.startsAt);
 		endsAt = EventClock.parse(board == null ? null : board.endsAt);
@@ -261,9 +261,9 @@ final class EventBoardClient
 		return teamName;
 	}
 
-	String eventPassword()
+	String eventCode()
 	{
-		return eventPassword;
+		return eventCode;
 	}
 
 	boolean eventLoaded()
@@ -668,13 +668,13 @@ final class EventBoardClient
 		return "Could not fetch event";
 	}
 
-	private static String passwordOf(EventBoard board)
+	private static String codeOf(EventBoard board)
 	{
-		if (board == null || board.eventPassword == null)
+		if (board == null || board.eventCode == null)
 		{
 			return "";
 		}
-		return board.eventPassword.trim();
+		return board.eventCode.trim();
 	}
 
 	private static List<EventPlayer> copyPlayers(EventBoard board)

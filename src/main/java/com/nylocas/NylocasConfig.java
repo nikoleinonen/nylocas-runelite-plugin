@@ -37,7 +37,7 @@ public interface NylocasConfig extends Config
 
 	@ConfigSection(
 		name = "Overlay",
-		description = "Event password and UTC time on the game screen. Password comes from the backend, no need to set it manually.",
+		description = "Event code and UTC time on the game screen. A code from the event replaces the one set here, if the organizer set one.",
 		position = 3
 	)
 	String overlaySection = "overlay";
@@ -167,7 +167,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "displayOverlay",
 		name = "Display overlay",
-		description = "Show the event password and the current UTC time on the game screen",
+		description = "Show the event code and the current UTC time on the game screen",
 		position = 0,
 		section = overlaySection
 	)
@@ -177,13 +177,25 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "passwordColor",
-		name = "Password color",
-		description = "Color of the event password",
+		keyName = "eventCode",
+		name = "Event code",
+		description = "Used when the loaded event has no code. A code from the event replaces this.",
 		position = 1,
 		section = overlaySection
 	)
-	default Color passwordColor()
+	default String eventCode()
+	{
+		return "";
+	}
+
+	@ConfigItem(
+		keyName = "codeColor",
+		name = "Code color",
+		description = "Color of the event code",
+		position = 2,
+		section = overlaySection
+	)
+	default Color codeColor()
 	{
 		return Color.GREEN;
 	}
@@ -192,7 +204,7 @@ public interface NylocasConfig extends Config
 		keyName = "timeColor",
 		name = "Time color",
 		description = "Color of the UTC time",
-		position = 2,
+		position = 3,
 		section = overlaySection
 	)
 	default Color timeColor()

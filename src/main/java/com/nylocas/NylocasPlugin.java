@@ -88,7 +88,7 @@ public class NylocasPlugin extends Plugin
 
 	private final Object keyFileLock = new Object();
 	private NavigationButton navButton;
-	private EventPasswordOverlay overlay;
+	private EventCodeOverlay overlay;
 	private volatile EventPanel panel;
 	private volatile boolean running;
 	private EventBoardClient board;
@@ -116,7 +116,7 @@ public class NylocasPlugin extends Plugin
 		proofs = new ProofUploader(client, clientThread, drawManager, executor, okHttpClient, gson, this::sessionId, this::eventAfterEnd, this::onProofEventEnded);
 		board.start();
 		proofs.start();
-		overlay = new EventPasswordOverlay(config, this);
+		overlay = new EventCodeOverlay(config, this);
 		overlayManager.add(overlay);
 		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "sidebar.png");
 		panel = new EventPanel(this);
@@ -174,10 +174,10 @@ public class NylocasPlugin extends Plugin
 		return key == null ? "" : key.trim();
 	}
 
-	String eventPassword()
+	String eventCode()
 	{
 		EventBoardClient current = board;
-		return current == null ? "" : current.eventPassword();
+		return current == null ? "" : current.eventCode();
 	}
 
 	boolean eventLoaded()
