@@ -266,6 +266,12 @@ final class EventBoardClient
 		return eventCode;
 	}
 
+	void noteEventCode(String code)
+	{
+		eventCode = code == null ? "" : code.trim();
+		eventStarted = true;
+	}
+
 	boolean eventLoaded()
 	{
 		return eventLoaded;
@@ -274,6 +280,11 @@ final class EventBoardClient
 	boolean eventStarted()
 	{
 		return eventStarted;
+	}
+
+	Instant startsAt()
+	{
+		return startsAt;
 	}
 
 	boolean beforeStart()

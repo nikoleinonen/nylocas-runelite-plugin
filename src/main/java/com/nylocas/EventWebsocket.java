@@ -352,6 +352,9 @@ final class EventWebsocket
 		String leader;
 		Boolean winner;
 		String place;
+
+		@SerializedName("event_code")
+		String eventCode;
 	}
 
 	private static final class ErrorBody

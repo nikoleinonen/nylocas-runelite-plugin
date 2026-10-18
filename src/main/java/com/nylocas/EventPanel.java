@@ -62,7 +62,7 @@ final class EventPanel extends PluginPanel
 	private static final Color INCOMPLETE_TEXT = new Color(0xa0a0a0);
 	private static final Color HEADER_COLOR = new Color(0x1e1e1e);
 	private static final Color HEADER_LINE = new Color(0x171717);
-	private static final int COOLDOWN_MS = 60_000;
+	private static final int COOLDOWN_MS = 2_000; // PUT TO 60_000 WHEN READY FOR PLUGIN HUB!
 	private static final int LINK_ICON = 16;
 	private static final String ICON_STYLE = "border: 3,0,3,0,#0000";
 	private static final String DISCORD_URL = "https://discord.gg/3T23DAehU5";

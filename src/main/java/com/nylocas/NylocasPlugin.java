@@ -192,6 +192,12 @@ public class NylocasPlugin extends Plugin
 		return current != null && current.eventStarted();
 	}
 
+	Instant eventStartsAt()
+	{
+		EventBoardClient current = board;
+		return current == null ? null : current.startsAt();
+	}
+
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
@@ -496,6 +502,15 @@ public class NylocasPlugin extends Plugin
 			String team = frame.teamName == null ? "" : frame.teamName;
 			boolean complete = Boolean.TRUE.equals(frame.complete);
 			chat(WebsocketText.approved(team, item, complete, tileTitle(frame.tileId), accentColor(false)));
+			return;
+		}
+		if ("code".equals(frame.type))
+		{
+			EventBoardClient current = board;
+			if (current != null)
+			{
+				current.noteEventCode(frame.eventCode);
+			}
 			return;
 		}
 		if ("rank".equals(frame.type))

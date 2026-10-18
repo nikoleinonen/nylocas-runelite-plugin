@@ -107,7 +107,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "receiveRank",
 		name = "Position changes",
-		description = "Show a chat message when a team takes the lead. The place on the panel still updates while Enable real-time updates is on.",
+		description = "Show a chat message when a team takes the lead.",
 		position = 0,
 		section = notificationsSection
 	)
@@ -119,7 +119,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "receiveOwn",
 		name = "Own team approvals",
-		description = "Show a chat message when your team's submission is approved. The tile on the panel still updates while Enable real-time updates is on.",
+		description = "Show a chat message when your team's submission is approved.",
 		position = 1,
 		section = notificationsSection
 	)
@@ -131,7 +131,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "receiveEnemy",
 		name = "Enemy team approvals",
-		description = "Show a chat message when an opponent team's submission is approved. Requires Enable real-time updates. Takes effect on the next Connect.",
+		description = "Show a chat message when an enemy team's submission is approved.",
 		position = 2,
 		section = notificationsSection
 	)

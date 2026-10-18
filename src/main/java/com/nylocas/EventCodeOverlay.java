@@ -2,6 +2,7 @@ package com.nylocas;
 
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -15,7 +16,8 @@ import static net.runelite.client.ui.overlay.OverlayManager.OPTION_CONFIGURE;
 
 final class EventCodeOverlay extends OverlayPanel
 {
-	private static final String NOT_STARTED = "The event has not started";
+	private static final String STARTS_IN = "The event starts in: ";
+	private static final String REFRESH = "Refresh the event to get the code";
 	private static final DateTimeFormatter UTC_TIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(ZoneOffset.UTC);
 
 	private final NylocasConfig config;
@@ -36,11 +38,35 @@ final class EventCodeOverlay extends OverlayPanel
 		{
 			return null;
 		}
-		String label = label(plugin.eventLoaded(), plugin.eventStarted(), plugin.eventCode(), config.eventCode());
+		boolean countdown = plugin.eventLoaded() && !plugin.eventStarted();
+		String label = label(plugin.eventLoaded(), plugin.eventStarted(), plugin.eventCode(), config.eventCode(), plugin.eventStartsAt(), Instant.now());
 		String time = utcTime(Instant.now());
-		String shown = label.isEmpty() ? time : label + " " + time;
+		if (countdown && label.isEmpty())
+		{
+			return null;
+		}
+		String shown;
+		if (countdown)
+		{
+			shown = label;
+		}
+		else if (label.isEmpty())
+		{
+			shown = time;
+		}
+		else
+		{
+			shown = label + " " + time;
+		}
 		panelComponent.setPreferredSize(new Dimension(graphics.getFontMetrics().stringWidth(shown) + 10, 0));
-		if (label.isEmpty())
+		if (countdown)
+		{
+			panelComponent.getChildren().add(LineComponent.builder()
+				.left(label)
+				.leftColor(config.codeColor())
+				.build());
+		}
+		else if (label.isEmpty())
 		{
 			panelComponent.getChildren().add(LineComponent.builder()
 				.left(time)
@@ -64,11 +90,11 @@ final class EventCodeOverlay extends OverlayPanel
 		return UTC_TIME.format(instant) + " UTC";
 	}
 
-	static String label(boolean loaded, boolean started, String fetched, String manual)
+	static String label(boolean loaded, boolean started, String fetched, String manual, Instant startsAt, Instant now)
 	{
 		if (loaded && !started)
 		{
-			return NOT_STARTED;
+			return startsIn(startsAt, now);
 		}
 		String fromEvent = text(fetched);
 		if (!fromEvent.isEmpty())
@@ -76,6 +102,54 @@ final class EventCodeOverlay extends OverlayPanel
 			return fromEvent;
 		}
 		return text(manual);
+	}
+
+	static String startsIn(Instant startsAt, Instant now)
+	{
+		if (startsAt == null || now == null)
+		{
+			return "";
+		}
+		if (!now.isBefore(startsAt))
+		{
+			return REFRESH;
+		}
+		return STARTS_IN + countdown(Duration.between(now, startsAt).getSeconds());
+	}
+
+	static String countdown(long seconds)
+	{
+		long days = seconds / 86_400;
+		long hours = (seconds % 86_400) / 3_600;
+		long minutes = (seconds % 3_600) / 60;
+		long remainingSeconds = seconds % 60;
+		StringBuilder text = new StringBuilder();
+		if (days > 0)
+		{
+			text.append(days).append('d');
+		}
+		if (hours > 0)
+		{
+			if (text.length() > 0)
+			{
+				text.append(' ');
+			}
+			text.append(hours).append('h');
+		}
+		if (minutes > 0)
+		{
+			if (text.length() > 0)
+			{
+				text.append(' ');
+			}
+			text.append(minutes).append('m');
+		}
+		if (text.length() > 0)
+		{
+			text.append(' ');
+		}
+		text.append(remainingSeconds).append('s');
+		return text.toString();
 	}
 
 	private static String text(String value)
