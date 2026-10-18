@@ -387,7 +387,7 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		websocket.open(teamKey(), true, true, config.receiveEnemy(), event.startsAt, event.endsAt);
+		websocket.open(teamKey(), true, true, config.receiveEnemy(), config.receiveEnemyRejections(), event.startsAt, event.endsAt);
 	}
 
 	private void onLocalEventEnd(int ticket)
@@ -479,7 +479,11 @@ public class NylocasPlugin extends Plugin
 			boolean complete = Boolean.TRUE.equals(frame.complete);
 			if (frame.approval && config.receiveOwn())
 			{
-				chat(WebsocketText.approved(teamName(), itemLabel(frame), complete, tileTitle(frame.tileId), accentColor(true), config.dropColor(), config.tileColor()));
+				chat(WebsocketText.approved(teamName(), tileTitle(frame.tileId), complete, accentColor(true), config.tileColor()));
+			}
+			else if (config.receiveOwnRejections())
+			{
+				chatReview(frame, true);
 			}
 			EventPanel current = panel;
 			if (current != null)
@@ -498,10 +502,14 @@ public class NylocasPlugin extends Plugin
 		}
 		if ("approved".equals(frame.type))
 		{
-			String item = itemLabel(frame);
 			String team = frame.teamName == null ? "" : frame.teamName;
 			boolean complete = Boolean.TRUE.equals(frame.complete);
-			chat(WebsocketText.approved(team, item, complete, tileTitle(frame.tileId), accentColor(false), config.dropColor(), config.tileColor()));
+			chat(WebsocketText.approved(team, tileTitle(frame.tileId), complete, accentColor(false), config.tileColor()));
+			return;
+		}
+		if ("rejected".equals(frame.type) || "deleted".equals(frame.type))
+		{
+			chatReview(frame, false);
 			return;
 		}
 		if ("code".equals(frame.type))
@@ -524,6 +532,22 @@ public class NylocasPlugin extends Plugin
 			{
 				current.showPlace(frame.place);
 			}
+		}
+	}
+
+	private void chatReview(EventWebsocket.Frame frame, boolean own)
+	{
+		String tile = tileTitle(frame.tileId);
+		String team = own ? teamName() : (frame.teamName == null ? "" : frame.teamName);
+		Color teamColor = accentColor(own);
+		if (own ? "reject".equals(frame.action) : "rejected".equals(frame.type))
+		{
+			chat(WebsocketText.rejected(team, tile, frame.rejectionReason, teamColor, config.tileColor(), config.rejectionColor()));
+			return;
+		}
+		if (own ? "delete".equals(frame.action) : "deleted".equals(frame.type))
+		{
+			chat(WebsocketText.deleted(team, tile, teamColor, config.tileColor()));
 		}
 	}
 

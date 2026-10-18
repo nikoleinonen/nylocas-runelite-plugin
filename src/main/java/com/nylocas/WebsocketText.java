@@ -20,14 +20,31 @@ final class WebsocketText
 		return line;
 	}
 
-	static String approved(String teamName, String item, boolean complete, String tileTitle, Color teamColor, Color dropColor, Color tileColor)
+	static String approved(String teamName, String tileTitle, boolean complete, Color teamColor, Color tileColor)
 	{
-		String line = accent(teamName, teamColor) + "'s drop " + accent(item, dropColor) + " got approved";
+		String tile = accent(tileTitle, tileColor);
+		String line = accent(teamName, teamColor) + "'s submission for " + tile + " got approved";
 		if (complete)
 		{
-			line += " and that completed the tile: " + accent(tileTitle, tileColor);
+			line += " and that completed the tile: " + tile;
 		}
 		return line;
+	}
+
+	static String rejected(String teamName, String tileTitle, String reason, Color teamColor, Color tileColor, Color reasonColor)
+	{
+		String line = accent(teamName, teamColor) + "'s submission for " + accent(tileTitle, tileColor) + " got rejected";
+		String why = accent(reason, reasonColor);
+		if (!why.isEmpty())
+		{
+			line += ": " + why;
+		}
+		return line;
+	}
+
+	static String deleted(String teamName, String tileTitle, Color teamColor, Color tileColor)
+	{
+		return accent(teamName, teamColor) + "'s submission for " + accent(tileTitle, tileColor) + " got deleted";
 	}
 
 	static String rank(String leader, boolean winner, Color accent)

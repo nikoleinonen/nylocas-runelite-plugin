@@ -141,10 +141,22 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "receiveOwnRejections",
+		name = "Own team rejections",
+		description = "Show a chat message when your team's submission is rejected or deleted.",
+		position = 3,
+		section = notificationsSection
+	)
+	default boolean receiveOwnRejections()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "receiveEnemy",
 		name = "Enemy team approvals",
 		description = "Show a chat message when an enemy team's submission is approved.",
-		position = 3,
+		position = 4,
 		section = notificationsSection
 	)
 	default boolean receiveEnemy()
@@ -153,10 +165,22 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "receiveEnemyRejections",
+		name = "Enemy team rejections",
+		description = "Show a chat message when an enemy team's submission is rejected or deleted.",
+		position = 5,
+		section = notificationsSection
+	)
+	default boolean receiveEnemyRejections()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "dropColor",
 		name = "Drop color",
 		description = "Accent for drop names in chat notifications. The rest of the line stays the normal chat color.",
-		position = 4,
+		position = 6,
 		section = notificationsSection
 	)
 	default Color dropColor()
@@ -168,7 +192,7 @@ public interface NylocasConfig extends Config
 		keyName = "tileColor",
 		name = "Tile color",
 		description = "Accent for tile names in chat notifications. The rest of the line stays the normal chat color.",
-		position = 5,
+		position = 7,
 		section = notificationsSection
 	)
 	default Color tileColor()
@@ -177,10 +201,22 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "rejectionColor",
+		name = "Rejection color",
+		description = "Accent for rejection reasons in chat notifications. The rest of the line stays the normal chat color.",
+		position = 8,
+		section = notificationsSection
+	)
+	default Color rejectionColor()
+	{
+		return new Color(0xB60B0B);
+	}
+
+	@ConfigItem(
 		keyName = "ownTeamColor",
 		name = "Own team color",
 		description = "Accent for your team name, and for the leader when your team is in front. The rest of the line stays the normal chat color.",
-		position = 6,
+		position = 9,
 		section = notificationsSection
 	)
 	default Color ownTeamColor()
@@ -192,7 +228,7 @@ public interface NylocasConfig extends Config
 		keyName = "enemyTeamColor",
 		name = "Enemy team color",
 		description = "Accent for an opponent's team name, and for the leader when another team is in front. The rest of the line stays the normal chat color.",
-		position = 7,
+		position = 10,
 		section = notificationsSection
 	)
 	default Color enemyTeamColor()

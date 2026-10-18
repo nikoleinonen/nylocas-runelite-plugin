@@ -12,6 +12,7 @@ public class WebsocketTextTest
 	private static final Color ENEMY = new Color(0xFF6B6B);
 	private static final Color DROP = new Color(0x10B981);
 	private static final Color TILE = new Color(0x38BDF8);
+	private static final Color REASON = new Color(0xC47A11);
 
 	@Test
 	public void writesEventDropLines()
@@ -26,18 +27,28 @@ public class WebsocketTextTest
 	public void writesApprovalLines()
 	{
 		String team = ColorUtil.wrapWithColorTag("Blue", OWN);
-		String item = ColorUtil.wrapWithColorTag("Bandos hilt", DROP);
 		String tile = ColorUtil.wrapWithColorTag("Bandos hilt", TILE);
-		assertEquals(team + "'s drop " + item + " got approved", WebsocketText.approved("Blue", "Bandos hilt", false, "Bandos hilt", OWN, DROP, TILE));
-		assertEquals(team + "'s drop " + item + " got approved and that completed the tile: " + tile, WebsocketText.approved("Blue", "Bandos hilt", true, "Bandos hilt", OWN, DROP, TILE));
+		assertEquals(team + "'s submission for " + tile + " got approved", WebsocketText.approved("Blue", "Bandos hilt", false, OWN, TILE));
+		assertEquals(team + "'s submission for " + tile + " got approved and that completed the tile: " + tile, WebsocketText.approved("Blue", "Bandos hilt", true, OWN, TILE));
+	}
+
+	@Test
+	public void writesReviewLines()
+	{
+		String team = ColorUtil.wrapWithColorTag("Blue", OWN);
+		String tile = ColorUtil.wrapWithColorTag("Dragon warhammer", TILE);
+		String reason = ColorUtil.wrapWithColorTag("Wrong boss", REASON);
+		assertEquals(team + "'s submission for " + tile + " got rejected: " + reason, WebsocketText.rejected("Blue", "Dragon warhammer", "Wrong boss", OWN, TILE, REASON));
+		assertEquals(team + "'s submission for " + tile + " got rejected", WebsocketText.rejected("Blue", "Dragon warhammer", "", OWN, TILE, REASON));
+		assertEquals(team + "'s submission for " + tile + " got deleted", WebsocketText.deleted("Blue", "Dragon warhammer", OWN, TILE));
 	}
 
 	@Test
 	public void colorsEnemyNamesSeparately()
 	{
 		String team = ColorUtil.wrapWithColorTag("Red", ENEMY);
-		String item = ColorUtil.wrapWithColorTag("Armadyl hilt", DROP);
-		assertEquals(team + "'s drop " + item + " got approved", WebsocketText.approved("Red", "Armadyl hilt", false, "", ENEMY, DROP, TILE));
+		String tile = ColorUtil.wrapWithColorTag("Armadyl hilt", TILE);
+		assertEquals(team + "'s submission for " + tile + " got approved", WebsocketText.approved("Red", "Armadyl hilt", false, ENEMY, TILE));
 	}
 
 	@Test
@@ -61,10 +72,10 @@ public class WebsocketTextTest
 	public void buildsTheLiveUrl()
 	{
 		assertEquals(
-			"ws://127.0.0.1:8090/plugin/websocket/abc?rank=1&own=0&enemy=1",
-			EventWebsocket.url("http://127.0.0.1:8080", "abc", true, false, true));
+			"ws://127.0.0.1:8090/plugin/websocket/abc?rank=1&own=0&enemy=1&enemy_reject=0",
+			EventWebsocket.url("http://127.0.0.1:8080", "abc", true, false, true, false));
 		assertEquals(
-			"wss://ws.nylocas.com/plugin/websocket/abc?rank=0&own=1&enemy=0",
-			EventWebsocket.url("https://api.nylocas.com", "abc", false, true, false));
+			"wss://ws.nylocas.com/plugin/websocket/abc?rank=0&own=1&enemy=0&enemy_reject=1",
+			EventWebsocket.url("https://api.nylocas.com", "abc", false, true, false, true));
 	}
 }
