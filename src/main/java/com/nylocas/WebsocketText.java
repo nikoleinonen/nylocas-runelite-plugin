@@ -20,6 +20,11 @@ final class WebsocketText
 		return line;
 	}
 
+	static String teamEventDrop(String teamName, String dropName, String tileName, Color teamColor, Color dropColor, Color tileColor)
+	{
+		return accent(teamName, teamColor) + "'s event drop: " + accent(dropName, dropColor) + " for " + accent(tileName, tileColor);
+	}
+
 	static String approved(String teamName, String tileTitle, boolean complete, Color teamColor, Color tileColor)
 	{
 		String tile = accent(tileTitle, tileColor);

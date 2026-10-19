@@ -105,25 +105,25 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "eventDrop",
-		name = "Event drop",
-		description = "Show a chat message when you receive a drop for an event tile. Auto submission adds \", auto submitted\".",
+		keyName = "receiveRank",
+		name = "Position changes",
+		description = "Show a chat message when a team takes the lead.",
 		position = 0,
 		section = notificationsSection
 	)
-	default boolean eventDrop()
+	default boolean receiveRank()
 	{
 		return false;
 	}
 
 	@ConfigItem(
-		keyName = "receiveRank",
-		name = "Position changes",
-		description = "Show a chat message when a team takes the lead.",
+		keyName = "eventDrop",
+		name = "Own team event drop",
+		description = "Show a chat message when you receive a drop for an event tile, and when a teammate submits one. Auto submission adds \", auto submitted\".",
 		position = 1,
 		section = notificationsSection
 	)
-	default boolean receiveRank()
+	default boolean eventDrop()
 	{
 		return false;
 	}
@@ -153,10 +153,22 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "enemyEventDrop",
+		name = "Enemy team event drop",
+		description = "Show a chat message when an enemy team submits a drop for an event tile. Requires Connect to WebSocket.",
+		position = 4,
+		section = notificationsSection
+	)
+	default boolean enemyEventDrop()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "receiveEnemy",
 		name = "Enemy team approvals",
 		description = "Show a chat message when an enemy team's submission is approved.",
-		position = 4,
+		position = 5,
 		section = notificationsSection
 	)
 	default boolean receiveEnemy()
@@ -168,7 +180,7 @@ public interface NylocasConfig extends Config
 		keyName = "receiveEnemyRejections",
 		name = "Enemy team rejections",
 		description = "Show a chat message when an enemy team's submission is rejected or deleted.",
-		position = 5,
+		position = 6,
 		section = notificationsSection
 	)
 	default boolean receiveEnemyRejections()
@@ -180,7 +192,7 @@ public interface NylocasConfig extends Config
 		keyName = "dropColor",
 		name = "Drop color",
 		description = "Accent for drop names in chat notifications. The rest of the line stays the normal chat color.",
-		position = 6,
+		position = 7,
 		section = notificationsSection
 	)
 	default Color dropColor()
@@ -192,7 +204,7 @@ public interface NylocasConfig extends Config
 		keyName = "tileColor",
 		name = "Tile color",
 		description = "Accent for tile names in chat notifications. The rest of the line stays the normal chat color.",
-		position = 7,
+		position = 8,
 		section = notificationsSection
 	)
 	default Color tileColor()
@@ -204,7 +216,7 @@ public interface NylocasConfig extends Config
 		keyName = "rejectionColor",
 		name = "Rejection color",
 		description = "Accent for rejection reasons in chat notifications. The rest of the line stays the normal chat color.",
-		position = 8,
+		position = 9,
 		section = notificationsSection
 	)
 	default Color rejectionColor()
@@ -216,7 +228,7 @@ public interface NylocasConfig extends Config
 		keyName = "ownTeamColor",
 		name = "Own team color",
 		description = "Accent for your team name, and for the leader when your team is in front. The rest of the line stays the normal chat color.",
-		position = 9,
+		position = 10,
 		section = notificationsSection
 	)
 	default Color ownTeamColor()
@@ -228,7 +240,7 @@ public interface NylocasConfig extends Config
 		keyName = "enemyTeamColor",
 		name = "Enemy team color",
 		description = "Accent for an opponent's team name, and for the leader when another team is in front. The rest of the line stays the normal chat color.",
-		position = 10,
+		position = 11,
 		section = notificationsSection
 	)
 	default Color enemyTeamColor()

@@ -33,6 +33,7 @@ final class EventWebsocket
 	private boolean own;
 	private boolean enemy;
 	private boolean enemyReject;
+	private boolean enemyDrop;
 	private Instant startsAt;
 	private Instant endsAt;
 	private ScheduledFuture<?> pending;
@@ -49,7 +50,7 @@ final class EventWebsocket
 		this.plugin = plugin;
 	}
 
-	static String url(String apiBase, String keyHash, boolean rank, boolean own, boolean enemy, boolean enemyReject)
+	static String url(String apiBase, String keyHash, boolean rank, boolean own, boolean enemy, boolean enemyReject, boolean enemyDrop)
 	{
 		String base;
 		if ("https://api.nylocas.com".equals(apiBase))
@@ -68,13 +69,14 @@ final class EventWebsocket
 			+ "?rank=" + (rank ? "1" : "0")
 			+ "&own=" + (own ? "1" : "0")
 			+ "&enemy=" + (enemy ? "1" : "0")
-			+ "&enemy_reject=" + (enemyReject ? "1" : "0");
+			+ "&enemy_reject=" + (enemyReject ? "1" : "0")
+			+ "&enemy_drop=" + (enemyDrop ? "1" : "0");
 	}
 
-	void open(String teamKey, boolean rank, boolean own, boolean enemy, boolean enemyReject, String startsAt, String endsAt)
+	void open(String teamKey, boolean rank, boolean own, boolean enemy, boolean enemyReject, boolean enemyDrop, String startsAt, String endsAt)
 	{
 		stop();
-		if (teamKey == null || teamKey.isEmpty() || (!rank && !own && !enemy && !enemyReject))
+		if (teamKey == null || teamKey.isEmpty() || (!rank && !own && !enemy && !enemyReject && !enemyDrop))
 		{
 			return;
 		}
@@ -85,6 +87,7 @@ final class EventWebsocket
 		this.own = own;
 		this.enemy = enemy;
 		this.enemyReject = enemyReject;
+		this.enemyDrop = enemyDrop;
 		this.startsAt = EventClock.parse(startsAt);
 		this.endsAt = EventClock.parse(endsAt);
 		if (this.endsAt == null || !Instant.now().isBefore(this.endsAt))
@@ -158,7 +161,7 @@ final class EventWebsocket
 			return;
 		}
 		int ticket = generation;
-		String address = url(NylocasPlugin.API_BASE, EventBoardClient.hashKey(key), rank, own, enemy, enemyReject);
+		String address = url(NylocasPlugin.API_BASE, EventBoardClient.hashKey(key), rank, own, enemy, enemyReject, enemyDrop);
 		Request request = new Request.Builder().url(address).build();
 		socket = http.newWebSocket(request, new WebSocketListener()
 		{

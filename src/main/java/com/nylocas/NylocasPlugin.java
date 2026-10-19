@@ -386,7 +386,7 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		websocket.open(teamKey(), true, true, config.receiveEnemy(), config.receiveEnemyRejections(), event.startsAt, event.endsAt);
+		websocket.open(teamKey(), true, true, config.receiveEnemy(), config.receiveEnemyRejections(), config.enemyEventDrop(), event.startsAt, event.endsAt);
 	}
 
 	private void onLocalEventEnd(int ticket)
@@ -476,13 +476,21 @@ public class NylocasPlugin extends Plugin
 		if ("progress".equals(frame.type))
 		{
 			boolean complete = Boolean.TRUE.equals(frame.complete);
+			int previousPending = pendingOnBoard(frame);
 			if (frame.approval && config.receiveOwn())
 			{
 				chat(WebsocketText.approved(teamName(), tileTitle(frame.tileId), complete, accentColor(true), config.tileColor()));
 			}
-			else if (config.receiveOwnRejections())
+			else if ("reject".equals(frame.action) || "delete".equals(frame.action))
 			{
-				chatReview(frame, true);
+				if (config.receiveOwnRejections())
+				{
+					chatReview(frame, true);
+				}
+			}
+			else if (config.eventDrop() && frame.pending > previousPending)
+			{
+				chat(WebsocketText.teamEventDrop(teamName(), itemLabel(frame), tileTitle(frame.tileId), accentColor(true), config.dropColor(), config.tileColor()));
 			}
 			EventPanel current = panel;
 			if (current != null)
@@ -504,6 +512,12 @@ public class NylocasPlugin extends Plugin
 			String team = frame.teamName == null ? "" : frame.teamName;
 			boolean complete = Boolean.TRUE.equals(frame.complete);
 			chat(WebsocketText.approved(team, tileTitle(frame.tileId), complete, accentColor(false), config.tileColor()));
+			return;
+		}
+		if ("dropped".equals(frame.type))
+		{
+			String team = frame.teamName == null ? "" : frame.teamName;
+			chat(WebsocketText.teamEventDrop(team, itemLabel(frame), tileTitle(frame.tileId), accentColor(false), config.dropColor(), config.tileColor()));
 			return;
 		}
 		if ("rejected".equals(frame.type) || "deleted".equals(frame.type))
@@ -548,6 +562,16 @@ public class NylocasPlugin extends Plugin
 		{
 			chat(WebsocketText.deleted(team, tile, teamColor, config.tileColor()));
 		}
+	}
+
+	private int pendingOnBoard(EventWebsocket.Frame frame)
+	{
+		EventBoardClient current = board;
+		if (current == null)
+		{
+			return 0;
+		}
+		return current.pending(frame.tileId, frame.item);
 	}
 
 	private String tileTitle(long tileId)
