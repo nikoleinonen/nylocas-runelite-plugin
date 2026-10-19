@@ -42,7 +42,6 @@ final class ProofUploader
 {
 	private static final DateTimeFormatter SHOT_STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss_SSS").withZone(ZoneId.systemDefault());
 	private static final int CHAT_VIEW_GAME = 1;
-	// Client redraws for the chat tab. They do not send a click or a packet.
 	private static final int REDRAW_CHAT_BUTTONS = 178;
 	private static final int CHAT_ALERT_SET = 183;
 	private static final int TOPLEVEL_CHATBOX_BACKGROUND = 923;

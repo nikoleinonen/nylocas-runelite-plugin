@@ -32,18 +32,19 @@ public interface NylocasConfig extends Config
 	String submissionsSection = "submissions";
 
 	@ConfigSection(
-		name = "Notifications",
-		description = "Chat notifications",
-		position = 2
-	)
-	String notificationsSection = "notifications";
-
-	@ConfigSection(
 		name = "Overlay",
 		description = "Event code and UTC time on the game screen. A code from the event replaces the one set here, if the organizer set one.",
-		position = 3
+		position = 2
 	)
 	String overlaySection = "overlay";
+
+	@ConfigSection(
+		name = "Notifications",
+		description = "Chat notifications. A message can include {team}, {drop}, {tile}, and {reason} when that line has one. Those words use the color settings in this section. A blank message sends nothing.",
+		position = 3,
+		closedByDefault = true
+	)
+	String notificationsSection = "notifications";
 
 	@ConfigItem(
 		keyName = "connect",
@@ -156,10 +157,46 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "rankLeadMessage",
+		name = "Lead message",
+		description = "Chat line when a team takes the lead. {team} is that team.",
+		position = 1,
+		section = notificationsSection
+	)
+	default String rankLeadMessage()
+	{
+		return WebsocketText.RANK_LEAD;
+	}
+
+	@ConfigItem(
+		keyName = "rankWinMessage",
+		name = "Win message",
+		description = "Chat line when a team wins the event. {team} is that team.",
+		position = 2,
+		section = notificationsSection
+	)
+	default String rankWinMessage()
+	{
+		return WebsocketText.RANK_WIN;
+	}
+
+	@ConfigItem(
+		keyName = "rankTieMessage",
+		name = "Tie message",
+		description = "Chat line when first place is tied.",
+		position = 3,
+		section = notificationsSection
+	)
+	default String rankTieMessage()
+	{
+		return WebsocketText.RANK_TIE;
+	}
+
+	@ConfigItem(
 		keyName = "eventDrop",
 		name = "Own team drops",
 		description = "Show a chat message when you receive a drop for an event tile, and when a teammate receives one.",
-		position = 1,
+		position = 4,
 		section = notificationsSection
 	)
 	default boolean eventDrop()
@@ -168,10 +205,46 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "ownDropMessage",
+		name = "Your drop message",
+		description = "Chat line when you receive a drop. {drop} is the item, {tile} is the tile, and {team} is your team.",
+		position = 5,
+		section = notificationsSection
+	)
+	default String ownDropMessage()
+	{
+		return WebsocketText.OWN_DROP;
+	}
+
+	@ConfigItem(
+		keyName = "ownDropSubmittedMessage",
+		name = "Submitted drop message",
+		description = "Chat line when you receive a drop and it is sent as a proof automatically. {drop} is the item, {tile} is the tile, and {team} is your team.",
+		position = 6,
+		section = notificationsSection
+	)
+	default String ownDropSubmittedMessage()
+	{
+		return WebsocketText.OWN_DROP_SUBMITTED;
+	}
+
+	@ConfigItem(
+		keyName = "teammateDropMessage",
+		name = "Teammate drop message",
+		description = "Chat line when a teammate receives a drop. {team} is your team, {drop} is the item, and {tile} is the tile.",
+		position = 7,
+		section = notificationsSection
+	)
+	default String teammateDropMessage()
+	{
+		return WebsocketText.TEAM_DROP;
+	}
+
+	@ConfigItem(
 		keyName = "receiveOwn",
 		name = "Own team approvals",
 		description = "Show a chat message when your team's submission is approved.",
-		position = 2,
+		position = 8,
 		section = notificationsSection
 	)
 	default boolean receiveOwn()
@@ -180,10 +253,34 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "ownApprovedMessage",
+		name = "Own approval message",
+		description = "Chat line when your team's submission is approved. {team} is your team and {tile} is the tile.",
+		position = 9,
+		section = notificationsSection
+	)
+	default String ownApprovedMessage()
+	{
+		return WebsocketText.APPROVED;
+	}
+
+	@ConfigItem(
+		keyName = "ownApprovedCompleteMessage",
+		name = "Own tile complete message",
+		description = "Chat line when that approval also finishes the tile. {team} is your team and {tile} is the tile.",
+		position = 10,
+		section = notificationsSection
+	)
+	default String ownApprovedCompleteMessage()
+	{
+		return WebsocketText.APPROVED_COMPLETE;
+	}
+
+	@ConfigItem(
 		keyName = "receiveOwnRejections",
 		name = "Own team rejections",
 		description = "Show a chat message when your team's submission is rejected or deleted.",
-		position = 3,
+		position = 11,
 		section = notificationsSection
 	)
 	default boolean receiveOwnRejections()
@@ -192,10 +289,46 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "ownRejectedMessage",
+		name = "Own rejection message",
+		description = "Chat line when your team's submission is rejected and no reason is given. {team} is your team and {tile} is the tile.",
+		position = 12,
+		section = notificationsSection
+	)
+	default String ownRejectedMessage()
+	{
+		return WebsocketText.REJECTED;
+	}
+
+	@ConfigItem(
+		keyName = "ownRejectedReasonMessage",
+		name = "Own rejection reason message",
+		description = "Chat line when your team's submission is rejected and a reason is given. {team} is your team, {tile} is the tile, and {reason} is the reason.",
+		position = 13,
+		section = notificationsSection
+	)
+	default String ownRejectedReasonMessage()
+	{
+		return WebsocketText.REJECTED_REASON;
+	}
+
+	@ConfigItem(
+		keyName = "ownDeletedMessage",
+		name = "Own deletion message",
+		description = "Chat line when your team's submission is deleted. {team} is your team and {tile} is the tile.",
+		position = 14,
+		section = notificationsSection
+	)
+	default String ownDeletedMessage()
+	{
+		return WebsocketText.DELETED;
+	}
+
+	@ConfigItem(
 		keyName = ENEMY_EVENT_DROP,
 		name = "Enemy team drops",
 		description = "Show a chat message when an enemy team receives a drop for an event tile.",
-		position = 4,
+		position = 15,
 		section = notificationsSection
 	)
 	default boolean enemyEventDrop()
@@ -204,10 +337,22 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "enemyDropMessage",
+		name = "Enemy drop message",
+		description = "Chat line when an enemy team receives a drop. {team} is that team, {drop} is the item, and {tile} is the tile.",
+		position = 16,
+		section = notificationsSection
+	)
+	default String enemyDropMessage()
+	{
+		return WebsocketText.TEAM_DROP;
+	}
+
+	@ConfigItem(
 		keyName = RECEIVE_ENEMY,
 		name = "Enemy team approvals",
 		description = "Show a chat message when an enemy team's submission is approved.",
-		position = 5,
+		position = 17,
 		section = notificationsSection
 	)
 	default boolean receiveEnemy()
@@ -216,10 +361,34 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "enemyApprovedMessage",
+		name = "Enemy approval message",
+		description = "Chat line when an enemy team's submission is approved. {team} is that team and {tile} is the tile.",
+		position = 18,
+		section = notificationsSection
+	)
+	default String enemyApprovedMessage()
+	{
+		return WebsocketText.APPROVED;
+	}
+
+	@ConfigItem(
+		keyName = "enemyApprovedCompleteMessage",
+		name = "Enemy tile complete message",
+		description = "Chat line when that approval also finishes the tile. {team} is that team and {tile} is the tile.",
+		position = 19,
+		section = notificationsSection
+	)
+	default String enemyApprovedCompleteMessage()
+	{
+		return WebsocketText.APPROVED_COMPLETE;
+	}
+
+	@ConfigItem(
 		keyName = RECEIVE_ENEMY_REJECTIONS,
 		name = "Enemy team rejections",
 		description = "Show a chat message when an enemy team's submission is rejected or deleted.",
-		position = 6,
+		position = 20,
 		section = notificationsSection
 	)
 	default boolean receiveEnemyRejections()
@@ -228,10 +397,46 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "enemyRejectedMessage",
+		name = "Enemy rejection message",
+		description = "Chat line when an enemy team's submission is rejected and no reason is given. {team} is that team and {tile} is the tile.",
+		position = 21,
+		section = notificationsSection
+	)
+	default String enemyRejectedMessage()
+	{
+		return WebsocketText.REJECTED;
+	}
+
+	@ConfigItem(
+		keyName = "enemyRejectedReasonMessage",
+		name = "Enemy rejection reason message",
+		description = "Chat line when an enemy team's submission is rejected and a reason is given. {team} is that team, {tile} is the tile, and {reason} is the reason.",
+		position = 22,
+		section = notificationsSection
+	)
+	default String enemyRejectedReasonMessage()
+	{
+		return WebsocketText.REJECTED_REASON;
+	}
+
+	@ConfigItem(
+		keyName = "enemyDeletedMessage",
+		name = "Enemy deletion message",
+		description = "Chat line when an enemy team's submission is deleted. {team} is that team and {tile} is the tile.",
+		position = 23,
+		section = notificationsSection
+	)
+	default String enemyDeletedMessage()
+	{
+		return WebsocketText.DELETED;
+	}
+
+	@ConfigItem(
 		keyName = "dropColor",
 		name = "Drop color",
-		description = "Accent for drop names in chat notifications. The rest of the line stays the normal chat color.",
-		position = 7,
+		description = "Accent for {drop} in chat notifications. The rest of the line stays the normal chat color.",
+		position = 24,
 		section = notificationsSection
 	)
 	default Color dropColor()
@@ -242,8 +447,8 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "tileColor",
 		name = "Tile color",
-		description = "Accent for tile names in chat notifications. The rest of the line stays the normal chat color.",
-		position = 8,
+		description = "Accent for {tile} in chat notifications. The rest of the line stays the normal chat color.",
+		position = 25,
 		section = notificationsSection
 	)
 	default Color tileColor()
@@ -254,8 +459,8 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "rejectionColor",
 		name = "Rejection color",
-		description = "Accent for rejection reasons in chat notifications. The rest of the line stays the normal chat color.",
-		position = 9,
+		description = "Accent for {reason} in chat notifications. The rest of the line stays the normal chat color.",
+		position = 26,
 		section = notificationsSection
 	)
 	default Color rejectionColor()
@@ -266,8 +471,8 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "ownTeamColor",
 		name = "Own team color",
-		description = "Accent for your team name, and for the leader when your team is in front. The rest of the line stays the normal chat color.",
-		position = 10,
+		description = "Accent for {team} when it is your team, and for the leader when your team is in front. The rest of the line stays the normal chat color.",
+		position = 27,
 		section = notificationsSection
 	)
 	default Color ownTeamColor()
@@ -278,8 +483,8 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "enemyTeamColor",
 		name = "Enemy team color",
-		description = "Accent for an opponent's team name, and for the leader when another team is in front. The rest of the line stays the normal chat color.",
-		position = 11,
+		description = "Accent for {team} when it is an opponent, and for the leader when another team is in front. The rest of the line stays the normal chat color.",
+		position = 28,
 		section = notificationsSection
 	)
 	default Color enemyTeamColor()

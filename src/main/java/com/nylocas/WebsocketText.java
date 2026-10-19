@@ -6,64 +6,97 @@ import net.runelite.client.util.Text;
 
 final class WebsocketText
 {
+	static final String OWN_DROP = "You got: {drop} for {tile}";
+	static final String OWN_DROP_SUBMITTED = "You got: {drop} for {tile}, auto submitted";
+	static final String TEAM_DROP = "{team} got a drop: {drop} for {tile}";
+	static final String APPROVED = "{team}'s submission for {tile} got approved";
+	static final String APPROVED_COMPLETE = "{team}'s submission for {tile} got approved and that completes the tile: {tile}";
+	static final String REJECTED = "{team}'s submission for {tile} got rejected";
+	static final String REJECTED_REASON = "{team}'s submission for {tile} got rejected: {reason}";
+	static final String DELETED = "{team}'s submission for {tile} got deleted";
+	static final String RANK_LEAD = "{team} took the lead!";
+	static final String RANK_WIN = "{team} won the event! Congratulations!";
+	static final String RANK_TIE = "First place is tied.";
+
 	private WebsocketText()
 	{
 	}
 
-	static String eventDrop(String dropName, String tileName, boolean autoSubmitted, Color dropColor, Color tileColor)
+	static String eventDrop(String template, String dropName, String tileName, String teamName, Color teamColor, Color dropColor, Color tileColor)
 	{
-		String line = "You got: " + accent(dropName, dropColor) + " for " + accent(tileName, tileColor);
-		if (autoSubmitted)
-		{
-			line += ", auto submitted";
-		}
-		return line;
+		return format(template, teamName, dropName, tileName, "", teamColor, dropColor, tileColor, null);
 	}
 
-	static String teamEventDrop(String teamName, String dropName, String tileName, Color teamColor, Color dropColor, Color tileColor)
+	static String teamEventDrop(String template, String teamName, String dropName, String tileName, Color teamColor, Color dropColor, Color tileColor)
 	{
-		return accent(teamName, teamColor) + " got a drop: " + accent(dropName, dropColor) + " for " + accent(tileName, tileColor);
+		return format(template, teamName, dropName, tileName, "", teamColor, dropColor, tileColor, null);
 	}
 
-	static String approved(String teamName, String tileTitle, boolean complete, Color teamColor, Color tileColor)
+	static String approved(String template, String teamName, String tileTitle, Color teamColor, Color tileColor)
 	{
-		String tile = accent(tileTitle, tileColor);
-		String line = accent(teamName, teamColor) + "'s submission for " + tile + " got approved";
-		if (complete)
-		{
-			line += " and that completes the tile: " + tile;
-		}
-		return line;
+		return format(template, teamName, "", tileTitle, "", teamColor, null, tileColor, null);
 	}
 
-	static String rejected(String teamName, String tileTitle, String reason, Color teamColor, Color tileColor, Color reasonColor)
+	static String rejected(String template, String teamName, String tileTitle, String reason, Color teamColor, Color tileColor, Color reasonColor)
 	{
-		String line = accent(teamName, teamColor) + "'s submission for " + accent(tileTitle, tileColor) + " got rejected";
-		String why = accent(reason, reasonColor);
-		if (!why.isEmpty())
-		{
-			line += ": " + why;
-		}
-		return line;
+		return format(template, teamName, "", tileTitle, reason, teamColor, null, tileColor, reasonColor);
 	}
 
-	static String deleted(String teamName, String tileTitle, Color teamColor, Color tileColor)
+	static String deleted(String template, String teamName, String tileTitle, Color teamColor, Color tileColor)
 	{
-		return accent(teamName, teamColor) + "'s submission for " + accent(tileTitle, tileColor) + " got deleted";
+		return format(template, teamName, "", tileTitle, "", teamColor, null, tileColor, null);
 	}
 
-	static String rank(String leader, boolean winner, Color accent)
+	static String rank(String template, String leader, Color accent)
 	{
-		if (leader == null || leader.isEmpty())
+		return format(template, leader, "", "", "", accent, null, null, null);
+	}
+
+	private static String format(String template, String team, String drop, String tile, String reason, Color teamColor, Color dropColor, Color tileColor, Color reasonColor)
+	{
+		String pattern = template == null ? "" : Text.removeTags(template);
+		if (pattern.trim().isEmpty())
 		{
-			return "First place is tied.";
+			return "";
 		}
-		String name = accent(leader, accent);
-		if (winner)
+		StringBuilder out = new StringBuilder();
+		int cursor = 0;
+		while (cursor < pattern.length())
 		{
-			return name + " won the event! Congratulations!";
+			int open = pattern.indexOf('{', cursor);
+			if (open < 0)
+			{
+				out.append(pattern.substring(cursor));
+				break;
+			}
+			int close = pattern.indexOf('}', open + 1);
+			if (close < 0)
+			{
+				out.append(pattern.substring(cursor));
+				break;
+			}
+			out.append(pattern, cursor, open);
+			switch (pattern.substring(open + 1, close))
+			{
+				case "team":
+					out.append(accent(team, teamColor));
+					break;
+				case "drop":
+					out.append(accent(drop, dropColor));
+					break;
+				case "tile":
+					out.append(accent(tile, tileColor));
+					break;
+				case "reason":
+					out.append(accent(reason, reasonColor));
+					break;
+				default:
+					out.append(pattern, open, close + 1);
+					break;
+			}
+			cursor = close + 1;
 		}
-		return name + " took the lead!";
+		return out.toString();
 	}
 
 	private static String accent(String value, Color color)

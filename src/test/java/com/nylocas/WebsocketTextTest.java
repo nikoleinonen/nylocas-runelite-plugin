@@ -19,12 +19,13 @@ public class WebsocketTextTest
 	{
 		String drop = ColorUtil.wrapWithColorTag("Bandos hilt", DROP);
 		String tile = ColorUtil.wrapWithColorTag("Bandos", TILE);
-		assertEquals("Event drop: " + drop + " for " + tile, WebsocketText.eventDrop("Bandos hilt", "Bandos", false, DROP, TILE));
-		assertEquals("Event drop: " + drop + " for " + tile + ", auto submitted", WebsocketText.eventDrop("Bandos hilt", "Bandos", true, DROP, TILE));
-		String team = ColorUtil.wrapWithColorTag("Red", ENEMY);
-		assertEquals(team + "'s event drop: " + drop + " for " + tile, WebsocketText.teamEventDrop("Red", "Bandos hilt", "Bandos", ENEMY, DROP, TILE));
 		String own = ColorUtil.wrapWithColorTag("Blue", OWN);
-		assertEquals(own + "'s event drop: " + drop + " for " + tile, WebsocketText.teamEventDrop("Blue", "Bandos hilt", "Bandos", OWN, DROP, TILE));
+		assertEquals("You got: " + drop + " for " + tile, WebsocketText.eventDrop(WebsocketText.OWN_DROP, "Bandos hilt", "Bandos", "Blue", OWN, DROP, TILE));
+		assertEquals("You got: " + drop + " for " + tile + ", auto submitted", WebsocketText.eventDrop(WebsocketText.OWN_DROP_SUBMITTED, "Bandos hilt", "Bandos", "Blue", OWN, DROP, TILE));
+		assertEquals(own + " found " + drop, WebsocketText.eventDrop("{team} found {drop}", "Bandos hilt", "Bandos", "Blue", OWN, DROP, TILE));
+		String enemy = ColorUtil.wrapWithColorTag("Red", ENEMY);
+		assertEquals(enemy + " got a drop: " + drop + " for " + tile, WebsocketText.teamEventDrop(WebsocketText.TEAM_DROP, "Red", "Bandos hilt", "Bandos", ENEMY, DROP, TILE));
+		assertEquals(own + " got a drop: " + drop + " for " + tile, WebsocketText.teamEventDrop(WebsocketText.TEAM_DROP, "Blue", "Bandos hilt", "Bandos", OWN, DROP, TILE));
 	}
 
 	@Test
@@ -32,8 +33,8 @@ public class WebsocketTextTest
 	{
 		String team = ColorUtil.wrapWithColorTag("Blue", OWN);
 		String tile = ColorUtil.wrapWithColorTag("Bandos hilt", TILE);
-		assertEquals(team + "'s submission for " + tile + " got approved", WebsocketText.approved("Blue", "Bandos hilt", false, OWN, TILE));
-		assertEquals(team + "'s submission for " + tile + " got approved and that completed the tile: " + tile, WebsocketText.approved("Blue", "Bandos hilt", true, OWN, TILE));
+		assertEquals(team + "'s submission for " + tile + " got approved", WebsocketText.approved(WebsocketText.APPROVED, "Blue", "Bandos hilt", OWN, TILE));
+		assertEquals(team + "'s submission for " + tile + " got approved and that completes the tile: " + tile, WebsocketText.approved(WebsocketText.APPROVED_COMPLETE, "Blue", "Bandos hilt", OWN, TILE));
 	}
 
 	@Test
@@ -42,9 +43,9 @@ public class WebsocketTextTest
 		String team = ColorUtil.wrapWithColorTag("Blue", OWN);
 		String tile = ColorUtil.wrapWithColorTag("Dragon warhammer", TILE);
 		String reason = ColorUtil.wrapWithColorTag("Wrong boss", REASON);
-		assertEquals(team + "'s submission for " + tile + " got rejected: " + reason, WebsocketText.rejected("Blue", "Dragon warhammer", "Wrong boss", OWN, TILE, REASON));
-		assertEquals(team + "'s submission for " + tile + " got rejected", WebsocketText.rejected("Blue", "Dragon warhammer", "", OWN, TILE, REASON));
-		assertEquals(team + "'s submission for " + tile + " got deleted", WebsocketText.deleted("Blue", "Dragon warhammer", OWN, TILE));
+		assertEquals(team + "'s submission for " + tile + " got rejected: " + reason, WebsocketText.rejected(WebsocketText.REJECTED_REASON, "Blue", "Dragon warhammer", "Wrong boss", OWN, TILE, REASON));
+		assertEquals(team + "'s submission for " + tile + " got rejected", WebsocketText.rejected(WebsocketText.REJECTED, "Blue", "Dragon warhammer", "", OWN, TILE, REASON));
+		assertEquals(team + "'s submission for " + tile + " got deleted", WebsocketText.deleted(WebsocketText.DELETED, "Blue", "Dragon warhammer", OWN, TILE));
 	}
 
 	@Test
@@ -52,24 +53,36 @@ public class WebsocketTextTest
 	{
 		String team = ColorUtil.wrapWithColorTag("Red", ENEMY);
 		String tile = ColorUtil.wrapWithColorTag("Armadyl hilt", TILE);
-		assertEquals(team + "'s submission for " + tile + " got approved", WebsocketText.approved("Red", "Armadyl hilt", false, ENEMY, TILE));
+		assertEquals(team + "'s submission for " + tile + " got approved", WebsocketText.approved(WebsocketText.APPROVED, "Red", "Armadyl hilt", ENEMY, TILE));
 	}
 
 	@Test
 	public void writesRankLines()
 	{
 		String leader = ColorUtil.wrapWithColorTag("Blue", OWN);
-		assertEquals(leader + " took the lead!", WebsocketText.rank("Blue", false, OWN));
-		assertEquals(leader + " won the event! Congratulations!", WebsocketText.rank("Blue", true, OWN));
-		assertEquals("First place is tied.", WebsocketText.rank(null, false, OWN));
-		assertEquals("First place is tied.", WebsocketText.rank("", false, ENEMY));
+		assertEquals(leader + " took the lead!", WebsocketText.rank(WebsocketText.RANK_LEAD, "Blue", OWN));
+		assertEquals(leader + " won the event! Congratulations!", WebsocketText.rank(WebsocketText.RANK_WIN, "Blue", OWN));
+		assertEquals("First place is tied.", WebsocketText.rank(WebsocketText.RANK_TIE, null, OWN));
+		assertEquals("First place is tied.", WebsocketText.rank(WebsocketText.RANK_TIE, "", ENEMY));
 	}
 
 	@Test
 	public void stripsTagsInsideAnAccent()
 	{
 		String leader = ColorUtil.wrapWithColorTag("Blue", ENEMY);
-		assertEquals(leader + " took the lead!", WebsocketText.rank("Blue</col><col=ffffff>", false, ENEMY));
+		assertEquals(leader + " took the lead!", WebsocketText.rank("<col=ff0000>{team}</col> took the lead!", "Blue</col><col=ffffff>", ENEMY));
+		String named = ColorUtil.wrapWithColorTag("{tile}", OWN);
+		String drop = ColorUtil.wrapWithColorTag("Bandos hilt", DROP);
+		String tile = ColorUtil.wrapWithColorTag("Bandos", TILE);
+		assertEquals(named + " got a drop: " + drop + " for " + tile, WebsocketText.teamEventDrop(WebsocketText.TEAM_DROP, "{tile}", "Bandos hilt", "Bandos", OWN, DROP, TILE));
+	}
+
+	@Test
+	public void skipsABlankTemplate()
+	{
+		assertEquals("", WebsocketText.rank("  ", "Blue", OWN));
+		assertEquals("", WebsocketText.rank(null, "Blue", OWN));
+		assertEquals("Still {nope}", WebsocketText.eventDrop("Still {nope}", "Bandos hilt", "Bandos", "Blue", OWN, DROP, TILE));
 	}
 
 	@Test
