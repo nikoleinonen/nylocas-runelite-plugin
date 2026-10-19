@@ -122,7 +122,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "hidePrivateMessages",
 		name = "Hide private messages",
-		description = "Leave private messages out of the drop screenshot, both the local copy and the image sent to nylocas.com. The private chat can flicker for one frame. Split friends private chat must be enabled in the game settings, or those messages stay in the chat box.",
+		description = "Hide private messages for a frame when taking a screenshot. Split friends private chat must be enabled in the game settings, or those messages stay in the chat box.",
 		position = 2,
 		section = submissionsSection
 	)
@@ -134,7 +134,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "openChat",
 		name = "Open chat automatically",
-		description = "Open the Game chat before a drop screenshot, then put the chat back. The drop line 'hopefully' stays in the picture for both the local copy and the image sent to nylocas.com.",
+		description = "Open game chat for a frame when taking a screenshot. The drop 'hopefully' is visible in the chat.",
 		position = 3,
 		section = submissionsSection
 	)
