@@ -507,7 +507,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "eventCode",
 		name = "Event code",
-		description = "Used when the loaded event has no code. A code from the event replaces this. For this to update in real-time if organizer changes is, 'Enable real-time updates' must be enabled.",
+		description = "Used when the loaded event has no code. A code from the event replaces this. For this to update in real-time, 'Enable real-time updates' must be enabled. (If the organizer changes it mid event)",
 		position = 1,
 		section = overlaySection
 	)
