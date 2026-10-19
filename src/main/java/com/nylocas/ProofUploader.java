@@ -103,7 +103,7 @@ final class ProofUploader
 		}
 	}
 
-	void capture(Directory directory, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<AllowedDrops.ProofTarget> proofs, long playerId, String proofKey, Integer completions, boolean hidePrivateMessages, boolean openChat)
+	void capture(Directory directory, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<AllowedDrops.ProofTarget> proofs, long playerId, String proofKey, Integer completions, boolean hidePrivateMessages, boolean openChat, DiscordNotice discord)
 	{
 		if (openChat)
 		{
@@ -118,7 +118,7 @@ final class ProofUploader
 			try
 			{
 				BufferedImage shot = copyFrame(image);
-				executor.execute(() -> saveAndUploadScreenshot(directory, shot, eventName, labels, saveLocally, uploadProofs, proofs, playerId, proofKey, completions));
+				executor.execute(() -> saveAndUploadScreenshot(directory, shot, eventName, labels, saveLocally, uploadProofs, proofs, playerId, proofKey, completions, discord));
 			}
 			finally
 			{
@@ -215,7 +215,7 @@ final class ProofUploader
 		});
 	}
 
-	private void saveAndUploadScreenshot(Directory directory, BufferedImage shot, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<AllowedDrops.ProofTarget> targets, long playerId, String key, Integer completions)
+	private void saveAndUploadScreenshot(Directory directory, BufferedImage shot, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<AllowedDrops.ProofTarget> targets, long playerId, String key, Integer completions, DiscordNotice discord)
 	{
 		if (!running || shot == null)
 		{
@@ -271,7 +271,7 @@ final class ProofUploader
 				releaseReservation(target);
 				continue;
 			}
-			enqueueProof(png, target, playerId, key, completions);
+			enqueueProof(png, target, playerId, key, completions, discord);
 		}
 	}
 
@@ -301,7 +301,7 @@ final class ProofUploader
 		}
 	}
 
-	private void enqueueProof(byte[] png, AllowedDrops.ProofTarget target, long playerId, String key, Integer completions)
+	private void enqueueProof(byte[] png, AllowedDrops.ProofTarget target, long playerId, String key, Integer completions, DiscordNotice discord)
 	{
 		RequestBody file = RequestBody.create(MediaType.parse("image/png"), png);
 		MultipartBody.Builder form = new MultipartBody.Builder()
@@ -360,6 +360,7 @@ final class ProofUploader
 					}
 					if (response.isSuccessful())
 					{
+						postDiscord(png, discord, target);
 						return;
 					}
 					String responseBody = response.body() == null ? "" : response.body().string();
@@ -501,6 +502,96 @@ final class ProofUploader
 	interface Directory
 	{
 		Filepath get() throws IOException;
+	}
+
+	private void postDiscord(byte[] png, DiscordNotice notice, AllowedDrops.ProofTarget target)
+	{
+		if (notice == null || notice.webhook == null || notice.webhook.isEmpty() || png == null)
+		{
+			return;
+		}
+		String item = target == null || target.itemName == null ? "" : target.itemName;
+		String payload = "{\"content\":" + jsonString(item + "\n" + notice.playerName + " · " + notice.teamName) + ",\"allowed_mentions\":{\"parse\":[]}}";
+		RequestBody body = new MultipartBody.Builder()
+			.setType(MultipartBody.FORM)
+			.addFormDataPart("payload_json", payload)
+			.addFormDataPart("files[0]", "proof.png", RequestBody.create(MediaType.parse("image/png"), png))
+			.build();
+		Request request = new Request.Builder()
+			.url(notice.webhook)
+			.post(body)
+			.build();
+		okHttpClient.newCall(request).enqueue(new Callback()
+		{
+			@Override
+			public void onFailure(Call call, IOException error)
+			{
+				log.debug("Discord webhook failed", error);
+			}
+
+			@Override
+			public void onResponse(Call call, Response response)
+			{
+				try (Response ignored = response)
+				{
+					if (!response.isSuccessful())
+					{
+						log.debug("Discord webhook rejected {}", response.code());
+					}
+				}
+			}
+		});
+	}
+
+	private static String jsonString(String value)
+	{
+		StringBuilder out = new StringBuilder(value.length() + 2);
+		out.append('"');
+		for (int i = 0; i < value.length(); i++)
+		{
+			char c = value.charAt(i);
+			switch (c)
+			{
+				case '"':
+					out.append("\\\"");
+					break;
+				case '\\':
+					out.append("\\\\");
+					break;
+				case '\n':
+					out.append("\\n");
+					break;
+				case '\r':
+					out.append("\\r");
+					break;
+				default:
+					if (c < 0x20)
+					{
+						out.append(String.format("\\u%04x", (int) c));
+					}
+					else
+					{
+						out.append(c);
+					}
+					break;
+			}
+		}
+		out.append('"');
+		return out.toString();
+	}
+
+	static final class DiscordNotice
+	{
+		final String webhook;
+		final String playerName;
+		final String teamName;
+
+		DiscordNotice(String webhook, String playerName, String teamName)
+		{
+			this.webhook = webhook;
+			this.playerName = playerName == null ? "" : playerName;
+			this.teamName = teamName == null ? "" : teamName;
+		}
 	}
 
 	private static final class ErrorBody

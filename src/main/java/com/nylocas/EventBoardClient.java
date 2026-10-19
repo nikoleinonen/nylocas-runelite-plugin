@@ -55,6 +55,7 @@ final class EventBoardClient
 	private volatile String eventName = "";
 	private volatile String teamName = "";
 	private volatile String eventCode = "";
+	private volatile String discordWebhookUrl = "";
 	private volatile boolean eventLoaded;
 	private volatile boolean eventStarted;
 	private volatile Instant startsAt;
@@ -148,6 +149,7 @@ final class EventBoardClient
 		eventName = "";
 		teamName = "";
 		eventCode = "";
+		discordWebhookUrl = "";
 		eventLoaded = false;
 		eventStarted = false;
 		startsAt = null;
@@ -171,6 +173,7 @@ final class EventBoardClient
 		eventName = "";
 		teamName = "";
 		eventCode = "";
+		discordWebhookUrl = "";
 		eventLoaded = false;
 		eventStarted = false;
 		startsAt = null;
@@ -252,6 +255,7 @@ final class EventBoardClient
 		eventName = board == null || board.eventName == null ? "" : board.eventName;
 		teamName = board == null || board.teamName == null ? "" : board.teamName;
 		eventCode = codeOf(board);
+		discordWebhookUrl = webhookOf(board);
 		eventStarted = board != null && board.eventStarted;
 		startsAt = EventClock.parse(board == null ? null : board.startsAt);
 		endsAt = EventClock.parse(board == null ? null : board.endsAt);
@@ -286,6 +290,11 @@ final class EventBoardClient
 	String eventCode()
 	{
 		return eventCode;
+	}
+
+	String discordWebhookUrl()
+	{
+		return discordWebhookUrl;
 	}
 
 	void noteEventCode(String code)
@@ -733,6 +742,15 @@ final class EventBoardClient
 			return "";
 		}
 		return board.eventCode.trim();
+	}
+
+	private static String webhookOf(EventBoard board)
+	{
+		if (board == null || board.discordWebhookUrl == null)
+		{
+			return "";
+		}
+		return board.discordWebhookUrl.trim();
 	}
 
 	private static List<EventPlayer> copyPlayers(EventBoard board)

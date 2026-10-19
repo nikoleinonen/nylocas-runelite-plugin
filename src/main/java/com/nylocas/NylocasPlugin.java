@@ -959,7 +959,7 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		proofs.capture(this::pluginDirectory, board.eventName(), labels, saveLocally, uploadProofs, targets, proofPlayerId, proofKey, completionCount(sourceName), config.hidePrivateMessages(), config.openChat());
+		proofs.capture(this::pluginDirectory, board.eventName(), labels, saveLocally, uploadProofs, targets, proofPlayerId, proofKey, completionCount(sourceName), config.hidePrivateMessages(), config.openChat(), discordNotice());
 	}
 
 	private Filepath pluginDirectory() throws IOException
@@ -1135,6 +1135,21 @@ public class NylocasPlugin extends Plugin
 			targets.add(target);
 		}
 		return targets;
+	}
+
+	private ProofUploader.DiscordNotice discordNotice()
+	{
+		if (!config.sendDiscord())
+		{
+			return null;
+		}
+		String webhook = board.discordWebhookUrl();
+		if (webhook == null || webhook.isEmpty())
+		{
+			return null;
+		}
+		String player = localPlayerName();
+		return new ProofUploader.DiscordNotice(webhook, player, board.teamName());
 	}
 
 	private String localPlayerName()

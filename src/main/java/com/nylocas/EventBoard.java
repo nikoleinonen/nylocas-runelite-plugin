@@ -17,6 +17,9 @@ final class EventBoard
 	@SerializedName("event_code")
 	String eventCode;
 
+	@SerializedName("discord_webhook_url")
+	String discordWebhookUrl;
+
 	@SerializedName("event_started")
 	boolean eventStarted;
 

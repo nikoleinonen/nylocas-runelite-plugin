@@ -121,10 +121,22 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "sendDiscord",
+		name = "Send drop to Discord",
+		description = "Screenshot a screenshot to event's Discord webhook. Nothing is sent when the organizer has not enabled discord images.",
+		position = 2,
+		section = submissionsSection
+	)
+	default boolean sendDiscord()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "hidePrivateMessages",
 		name = "Hide private messages",
-		description = "Hide private messages for a frame when taking a screenshot. Split friends private chat must be enabled in the game settings, or those messages stay in the chat box.",
-		position = 2,
+		description = "Hide private messages for a frame when taking a screenshot. Split friends private chat must be enabled in the game settings, or those messages stay in the chat box. Or if you also enable 'Open chat automatically', those wont showup either.",
+		position = 3,
 		section = submissionsSection
 	)
 	default boolean hidePrivateMessages()
@@ -136,7 +148,7 @@ public interface NylocasConfig extends Config
 		keyName = "openChat",
 		name = "Open chat automatically",
 		description = "Open game chat for a frame when taking a screenshot. The drop 'hopefully' is visible in the chat.",
-		position = 3,
+		position = 4,
 		section = submissionsSection
 	)
 	default boolean openChat()
