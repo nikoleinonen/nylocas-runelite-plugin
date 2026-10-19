@@ -20,7 +20,9 @@ import javax.imageio.ImageIO;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.ScriptID;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarClientID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.ui.DrawManager;
@@ -39,6 +41,11 @@ import okhttp3.Response;
 final class ProofUploader
 {
 	private static final DateTimeFormatter SHOT_STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss_SSS").withZone(ZoneId.systemDefault());
+	private static final int CHAT_VIEW_GAME = 1;
+	// Client redraws for the chat tab. They do not send a click or a packet.
+	private static final int REDRAW_CHAT_BUTTONS = 178;
+	private static final int CHAT_ALERT_SET = 183;
+	private static final int TOPLEVEL_CHATBOX_BACKGROUND = 923;
 
 	private final Client client;
 	private final ClientThread clientThread;
@@ -52,6 +59,8 @@ final class ProofUploader
 	private final List<Call> proofCalls = new ArrayList<>();
 	private volatile boolean running;
 	private boolean privateChatHidden;
+	private int openChatFrames;
+	private int savedChatView = -1;
 
 	ProofUploader(Client client, ClientThread clientThread, DrawManager drawManager, ScheduledExecutorService executor, OkHttpClient okHttpClient, Gson gson, IntSupplier sessionId, BooleanSupplier eventAfterEnd, IntConsumer onEventEnded)
 	{
@@ -95,8 +104,12 @@ final class ProofUploader
 		}
 	}
 
-	void capture(Directory directory, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<AllowedDrops.ProofTarget> proofs, long playerId, String proofKey, Integer completions, boolean hidePrivateMessages)
+	void capture(Directory directory, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<AllowedDrops.ProofTarget> proofs, long playerId, String proofKey, Integer completions, boolean hidePrivateMessages, boolean openChat)
 	{
+		if (openChat)
+		{
+			showGameChat();
+		}
 		if (hidePrivateMessages)
 		{
 			hidePrivateChat();
@@ -111,8 +124,68 @@ final class ProofUploader
 			finally
 			{
 				showPrivateChat();
+				restoreChat();
 			}
 		});
+	}
+
+	private void showGameChat()
+	{
+		if (chatIsBusy())
+		{
+			return;
+		}
+		if (openChatFrames == 0)
+		{
+			int view = client.getVarcIntValue(VarClientID.CHAT_VIEW);
+			savedChatView = view == CHAT_VIEW_GAME ? -1 : view;
+			if (view != CHAT_VIEW_GAME)
+			{
+				applyChatView(CHAT_VIEW_GAME);
+			}
+		}
+		openChatFrames++;
+	}
+
+	private void restoreChat()
+	{
+		clientThread.invoke(() ->
+		{
+			if (openChatFrames <= 0)
+			{
+				return;
+			}
+			openChatFrames--;
+			if (openChatFrames > 0 || savedChatView < 0)
+			{
+				return;
+			}
+			int view = savedChatView;
+			savedChatView = -1;
+			applyChatView(view);
+		});
+	}
+
+	private void applyChatView(int view)
+	{
+		client.setVarcIntValue(VarClientID.CHAT_VIEW, view);
+		if (view == CHAT_VIEW_GAME)
+		{
+			client.runScript(CHAT_ALERT_SET, CHAT_VIEW_GAME, 0);
+		}
+		client.runScript(TOPLEVEL_CHATBOX_BACKGROUND);
+		client.runScript(REDRAW_CHAT_BUTTONS);
+		client.runScript(ScriptID.SPLITPM_CHANGED);
+	}
+
+	private boolean chatIsBusy()
+	{
+		if (client.getWidget(InterfaceID.Chatmenu.OPTIONS) != null)
+		{
+			return true;
+		}
+		Widget layer = client.getWidget(InterfaceID.Chatbox.MES_LAYER);
+		return layer != null && !layer.isSelfHidden();
 	}
 
 	private void hidePrivateChat()

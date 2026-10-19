@@ -128,7 +128,19 @@ public interface NylocasConfig extends Config
 	)
 	default boolean hidePrivateMessages()
 	{
-		return true;
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "openChat",
+		name = "Open chat automatically",
+		description = "Open the Game chat before a drop screenshot, then put the chat back. The drop line 'hopefully' stays in the picture for both the local copy and the image sent to nylocas.com.",
+		position = 3,
+		section = submissionsSection
+	)
+	default boolean openChat()
+	{
+		return false;
 	}
 
 	@ConfigItem(
