@@ -445,6 +445,8 @@ final class EventWebsocket
 		@SerializedName("tile_id")
 		long tileId;
 
+		long id;
+		String title;
 		String item;
 		int approved;
 		int pending;

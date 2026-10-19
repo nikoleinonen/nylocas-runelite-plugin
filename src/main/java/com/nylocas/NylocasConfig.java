@@ -134,7 +134,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "eventDrop",
 		name = "Own team event drop",
-		description = "Show a chat message when you receive a drop for an event tile, and when a teammate submits one. Auto submission adds \", auto submitted\".",
+		description = "Show a chat message when you receive a drop for an event tile, and when a teammate receives one. Auto submission adds \", auto submitted\".",
 		position = 1,
 		section = notificationsSection
 	)
@@ -170,7 +170,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = ENEMY_EVENT_DROP,
 		name = "Enemy team event drop",
-		description = "Show a chat message when an enemy team submits a drop for an event tile.",
+		description = "Show a chat message when an enemy team receives a drop for an event tile.",
 		position = 4,
 		section = notificationsSection
 	)

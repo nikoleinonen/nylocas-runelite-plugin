@@ -1,12 +1,14 @@
 package com.nylocas;
 
 import com.google.gson.Gson;
+import com.google.gson.annotations.SerializedName;
 import com.google.inject.Provides;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -14,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -42,7 +45,13 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.Filepath;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 @Slf4j
 @PluginDescriptor(
@@ -105,6 +114,9 @@ public class NylocasPlugin extends Plugin
 	private String raidChatName;
 	private long raidChatAt;
 	private final Map<String, CompletionSeen> completionCounts = new HashMap<>();
+	private final ArrayDeque<Long> announcedDrops = new ArrayDeque<>();
+	private static final int ANNOUNCED_DROP_CAP = 32;
+	private static final MediaType DROP_JSON = MediaType.parse("application/json");
 	private boolean loggingIn;
 	private boolean awaitLogin;
 	private volatile boolean loginScreen;
@@ -425,6 +437,7 @@ public class NylocasPlugin extends Plugin
 		{
 			proofs.cancelUploads();
 		}
+		clearAnnounced();
 		if (websocket != null)
 		{
 			websocket.stop();
@@ -644,7 +657,6 @@ public class NylocasPlugin extends Plugin
 		if ("progress".equals(frame.type))
 		{
 			boolean complete = Boolean.TRUE.equals(frame.complete);
-			int previousPending = pendingOnBoard(frame);
 			if (frame.approval && config.receiveOwn())
 			{
 				chat(WebsocketText.approved(teamName(), tileTitle(frame.tileId), complete, accentColor(true), config.tileColor()));
@@ -655,10 +667,6 @@ public class NylocasPlugin extends Plugin
 				{
 					chatReview(frame, true);
 				}
-			}
-			else if (config.eventDrop() && frame.pending > previousPending)
-			{
-				chat(WebsocketText.teamEventDrop(teamName(), itemLabel(frame), tileTitle(frame.tileId), accentColor(true), config.dropColor(), config.tileColor()));
 			}
 			EventPanel current = panel;
 			if (current != null)
@@ -679,13 +687,22 @@ public class NylocasPlugin extends Plugin
 		{
 			String team = frame.teamName == null ? "" : frame.teamName;
 			boolean complete = Boolean.TRUE.equals(frame.complete);
-			chat(WebsocketText.approved(team, tileTitle(frame.tileId), complete, accentColor(false), config.tileColor()));
+			chat(WebsocketText.approved(team, enemyTileTitle(frame), complete, accentColor(false), config.tileColor()));
 			return;
 		}
 		if ("dropped".equals(frame.type))
 		{
+			if (consumeAnnounce(frame.id))
+			{
+				return;
+			}
 			String team = frame.teamName == null ? "" : frame.teamName;
-			chat(WebsocketText.teamEventDrop(team, itemLabel(frame), tileTitle(frame.tileId), accentColor(false), config.dropColor(), config.tileColor()));
+			boolean own = !team.isEmpty() && team.equals(teamName());
+			if (own && !config.eventDrop())
+			{
+				return;
+			}
+			chat(WebsocketText.teamEventDrop(team, itemLabel(frame), enemyTileTitle(frame), accentColor(own), config.dropColor(), config.tileColor()));
 			return;
 		}
 		if ("rejected".equals(frame.type) || "deleted".equals(frame.type))
@@ -718,7 +735,7 @@ public class NylocasPlugin extends Plugin
 
 	private void chatReview(EventWebsocket.Frame frame, boolean own)
 	{
-		String tile = tileTitle(frame.tileId);
+		String tile = own ? tileTitle(frame.tileId) : enemyTileTitle(frame);
 		String team = own ? teamName() : (frame.teamName == null ? "" : frame.teamName);
 		Color teamColor = accentColor(own);
 		if (own ? "reject".equals(frame.action) : "rejected".equals(frame.type))
@@ -732,14 +749,18 @@ public class NylocasPlugin extends Plugin
 		}
 	}
 
-	private int pendingOnBoard(EventWebsocket.Frame frame)
+	private String enemyTileTitle(EventWebsocket.Frame frame)
 	{
-		EventBoardClient current = board;
-		if (current == null)
+		String local = tileTitle(frame.tileId);
+		if (!local.isEmpty())
 		{
-			return 0;
+			return local;
 		}
-		return current.pending(frame.tileId, frame.item);
+		if (frame.title != null && !frame.title.isEmpty())
+		{
+			return frame.title;
+		}
+		return "";
 	}
 
 	private String tileTitle(long tileId)
@@ -865,15 +886,19 @@ public class NylocasPlugin extends Plugin
 			return;
 		}
 		boolean saveLocally = config.saveProofs();
-		boolean uploadProofs = config.submitProofs() && config.connect() && !proofsStopped && !board.beforeStart() && !board.afterEnd();
+		boolean live = config.connect() && !proofsStopped && !board.beforeStart() && !board.afterEnd();
+		boolean uploadProofs = config.submitProofs() && live;
 		List<AllowedDrops.ProofTarget> targets = List.of();
 		String proofKey = "";
 		long proofPlayerId = 0;
+		if (live)
+		{
+			proofKey = teamKey();
+			proofPlayerId = AllowedDrops.playerId(board.players(), localPlayerName());
+		}
 		if (uploadProofs)
 		{
 			targets = proofTargets(tiles, sourceName, lootReceived.getItems());
-			proofKey = teamKey();
-			proofPlayerId = AllowedDrops.playerId(board.players(), localPlayerName());
 			if (proofKey.isEmpty() || proofPlayerId == 0)
 			{
 				proofs.releaseReservations(targets);
@@ -883,6 +908,14 @@ public class NylocasPlugin extends Plugin
 			}
 		}
 		notifyEventDrops(tiles, sourceName, lootReceived.getItems(), uploadProofs, targets);
+		if (live && !proofKey.isEmpty() && proofPlayerId != 0)
+		{
+			List<AllowedDrops.ProofTarget> announced = uploadProofs ? targets : matchedTargets(tiles, sourceName, lootReceived.getItems());
+			for (AllowedDrops.ProofTarget target : announced)
+			{
+				announceDrop(target, proofPlayerId, proofKey);
+			}
+		}
 		if (!saveLocally && !uploadProofs)
 		{
 			return;
@@ -943,6 +976,109 @@ public class NylocasPlugin extends Plugin
 			}
 		}
 		return labels;
+	}
+
+	private List<AllowedDrops.ProofTarget> matchedTargets(List<EventTile> tiles, String sourceName, Collection<ItemStack> stacks)
+	{
+		List<AllowedDrops.ProofTarget> targets = new ArrayList<>();
+		for (ItemStack stack : stacks)
+		{
+			AllowedDrops.ProofTarget target = AllowedDrops.firstProof(tiles, sourceName, stack.getId());
+			if (target != null)
+			{
+				targets.add(target);
+			}
+		}
+		return targets;
+	}
+
+	private void announceDrop(AllowedDrops.ProofTarget target, long playerId, String key)
+	{
+		if (target == null || target.tile == null || target.item == null || target.item.key == null || target.item.key.isEmpty() || target.sourceId == null || target.sourceId.isEmpty())
+		{
+			return;
+		}
+		long id = ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE);
+		rememberAnnounce(id);
+		DropRequest request = new DropRequest();
+		request.tileId = target.tile.id;
+		request.playerId = playerId;
+		request.item = target.item.key;
+		request.source = target.sourceId;
+		request.id = id;
+		RequestBody body = RequestBody.create(DROP_JSON, gson.toJson(request));
+		Request call = new Request.Builder()
+			.url(API_BASE + "/plugin/drop")
+			.header("Authorization", "Bearer " + key)
+			.post(body)
+			.build();
+		okHttpClient.newCall(call).enqueue(new Callback()
+		{
+			@Override
+			public void onFailure(Call ignored, IOException error)
+			{
+				log.debug("Drop announce failed", error);
+				forgetAnnounce(id);
+			}
+
+			@Override
+			public void onResponse(Call ignored, Response response)
+			{
+				try
+				{
+					if (response.isSuccessful())
+					{
+						return;
+					}
+					log.debug("Drop announce rejected {}", response.code());
+					forgetAnnounce(id);
+				}
+				finally
+				{
+					response.close();
+				}
+			}
+		});
+	}
+
+	private void rememberAnnounce(long id)
+	{
+		synchronized (announcedDrops)
+		{
+			announcedDrops.addLast(id);
+			while (announcedDrops.size() > ANNOUNCED_DROP_CAP)
+			{
+				announcedDrops.removeFirst();
+			}
+		}
+	}
+
+	private boolean consumeAnnounce(long id)
+	{
+		if (id <= 0)
+		{
+			return false;
+		}
+		synchronized (announcedDrops)
+		{
+			return announcedDrops.remove(id);
+		}
+	}
+
+	private void forgetAnnounce(long id)
+	{
+		synchronized (announcedDrops)
+		{
+			announcedDrops.remove(id);
+		}
+	}
+
+	private void clearAnnounced()
+	{
+		synchronized (announcedDrops)
+		{
+			announcedDrops.clear();
+		}
 	}
 
 	private List<AllowedDrops.ProofTarget> proofTargets(List<EventTile> tiles, String sourceName, Collection<ItemStack> stacks)
@@ -1048,6 +1184,19 @@ public class NylocasPlugin extends Plugin
 			return null;
 		}
 		return seen.count;
+	}
+
+	private static final class DropRequest
+	{
+		@SerializedName("tile_id")
+		long tileId;
+
+		@SerializedName("player_id")
+		long playerId;
+
+		String item;
+		String source;
+		long id;
 	}
 
 	private static final class CompletionSeen
