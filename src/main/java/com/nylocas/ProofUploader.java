@@ -511,7 +511,7 @@ final class ProofUploader
 			return;
 		}
 		String item = target == null || target.itemName == null ? "" : target.itemName;
-		String payload = "{\"content\":" + jsonString(item + "\n" + notice.playerName + " · " + notice.teamName) + ",\"allowed_mentions\":{\"parse\":[]}}";
+		String payload = "{\"content\":" + jsonString(discordDropMessage(notice.teamName, notice.playerName, item, sourceLabel(target))) + ",\"allowed_mentions\":{\"parse\":[]}}";
 		RequestBody body = new MultipartBody.Builder()
 			.setType(MultipartBody.FORM)
 			.addFormDataPart("payload_json", payload)
@@ -541,6 +541,27 @@ final class ProofUploader
 				}
 			}
 		});
+	}
+
+	private static String discordDropMessage(String team, String player, String item, String source)
+	{
+		return "## " + team + "\n**" + player + "** has received: **" + item + "** from **" + source + "**";
+	}
+
+	private static String sourceLabel(AllowedDrops.ProofTarget target)
+	{
+		if (target == null || target.item == null || target.item.sources == null || target.sourceId == null)
+		{
+			return "";
+		}
+		for (EventSource source : target.item.sources)
+		{
+			if (source != null && target.sourceId.equals(source.id) && source.displayName != null && !source.displayName.isEmpty())
+			{
+				return source.displayName;
+			}
+		}
+		return "";
 	}
 
 	private static String jsonString(String value)
