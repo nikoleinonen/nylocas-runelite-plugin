@@ -25,7 +25,7 @@ final class EventWebsocket
 	private final ScheduledExecutorService executor;
 	private final NylocasPlugin plugin;
 
-	private int generation;
+	private volatile int generation;
 	private volatile boolean stopped = true;
 	private int step;
 	private String key = "";
@@ -34,6 +34,7 @@ final class EventWebsocket
 	private boolean enemy;
 	private boolean enemyReject;
 	private boolean enemyDrop;
+	private boolean filtersDirty;
 	private Instant startsAt;
 	private Instant endsAt;
 	private ScheduledFuture<?> pending;
@@ -71,6 +72,13 @@ final class EventWebsocket
 			+ "&enemy=" + (enemy ? "1" : "0")
 			+ "&enemy_reject=" + (enemyReject ? "1" : "0")
 			+ "&enemy_drop=" + (enemyDrop ? "1" : "0");
+	}
+
+	static String filterText(boolean enemy, boolean enemyReject, boolean enemyDrop)
+	{
+		return "{\"type\":\"filter\",\"enemy\":" + (enemy ? 1 : 0)
+			+ ",\"enemy_reject\":" + (enemyReject ? 1 : 0)
+			+ ",\"enemy_drop\":" + (enemyDrop ? 1 : 0) + "}";
 	}
 
 	void open(String teamKey, boolean rank, boolean own, boolean enemy, boolean enemyReject, boolean enemyDrop, String startsAt, String endsAt)
@@ -115,13 +123,52 @@ final class EventWebsocket
 		return !stopped;
 	}
 
+	void useEnemyFilters(boolean enemy, boolean enemyReject, boolean enemyDrop)
+	{
+		synchronized (this)
+		{
+			this.enemy = enemy;
+			this.enemyReject = enemyReject;
+			this.enemyDrop = enemyDrop;
+		}
+	}
+
+	void pushEnemyFilters(boolean enemy, boolean enemyReject, boolean enemyDrop)
+	{
+		WebSocket current;
+		synchronized (this)
+		{
+			boolean changed = this.enemy != enemy || this.enemyReject != enemyReject || this.enemyDrop != enemyDrop;
+			this.enemy = enemy;
+			this.enemyReject = enemyReject;
+			this.enemyDrop = enemyDrop;
+			if (!changed || stopped)
+			{
+				return;
+			}
+			current = socket;
+			if (current == null)
+			{
+				filtersDirty = true;
+				return;
+			}
+			filtersDirty = false;
+		}
+		current.send(filterText(enemy, enemyReject, enemyDrop));
+	}
+
 	void stop()
 	{
-		generation++;
-		stopped = true;
-		cancelPending();
-		WebSocket current = socket;
-		socket = null;
+		WebSocket current;
+		synchronized (this)
+		{
+			generation++;
+			stopped = true;
+			filtersDirty = false;
+			cancelPending();
+			current = socket;
+			socket = null;
+		}
 		if (current != null)
 		{
 			current.close(1000, "");
@@ -160,10 +207,17 @@ final class EventWebsocket
 			finish(!stopped && EventClock.afterEnd(endsAt, Instant.now()));
 			return;
 		}
-		int ticket = generation;
-		String address = url(NylocasPlugin.API_BASE, EventBoardClient.hashKey(key), rank, own, enemy, enemyReject, enemyDrop);
+		int ticket;
+		String address;
+		synchronized (this)
+		{
+			plugin.refreshEnemyFilters(this);
+			filtersDirty = false;
+			ticket = generation;
+			address = url(NylocasPlugin.API_BASE, EventBoardClient.hashKey(key), rank, own, enemy, enemyReject, enemyDrop);
+		}
 		Request request = new Request.Builder().url(address).build();
-		socket = http.newWebSocket(request, new WebSocketListener()
+		WebSocket opened = http.newWebSocket(request, new WebSocketListener()
 		{
 			@Override
 			public void onOpen(WebSocket webSocket, Response response)
@@ -213,7 +267,7 @@ final class EventWebsocket
 				{
 					return;
 				}
-				socket = null;
+				clearSocket(webSocket);
 				if (stopped)
 				{
 					return;
@@ -233,7 +287,7 @@ final class EventWebsocket
 				{
 					return;
 				}
-				socket = null;
+				clearSocket(webSocket);
 				if (stopped)
 				{
 					return;
@@ -258,6 +312,51 @@ final class EventWebsocket
 				reconnect(retry);
 			}
 		});
+		synchronized (this)
+		{
+			if (ticket == generation)
+			{
+				socket = opened;
+			}
+		}
+		if (ticket != generation)
+		{
+			opened.close(1000, "");
+			return;
+		}
+		sendFiltersIfDirty();
+	}
+
+	private void clearSocket(WebSocket webSocket)
+	{
+		synchronized (this)
+		{
+			if (socket == webSocket)
+			{
+				socket = null;
+			}
+		}
+	}
+
+	private void sendFiltersIfDirty()
+	{
+		WebSocket current;
+		boolean enemy;
+		boolean enemyReject;
+		boolean enemyDrop;
+		synchronized (this)
+		{
+			if (!filtersDirty || socket == null || stopped)
+			{
+				return;
+			}
+			filtersDirty = false;
+			current = socket;
+			enemy = this.enemy;
+			enemyReject = this.enemyReject;
+			enemyDrop = this.enemyDrop;
+		}
+		current.send(filterText(enemy, enemyReject, enemyDrop));
 	}
 
 	private void finish(boolean eventOver)

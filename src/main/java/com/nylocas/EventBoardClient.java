@@ -309,6 +309,11 @@ final class EventBoardClient
 		return startsAt;
 	}
 
+	Instant endsAt()
+	{
+		return endsAt;
+	}
+
 	boolean beforeStart()
 	{
 		return EventClock.beforeStart(startsAt, Instant.now());

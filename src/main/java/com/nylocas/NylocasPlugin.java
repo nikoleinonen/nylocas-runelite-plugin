@@ -99,6 +99,9 @@ public class NylocasPlugin extends Plugin
 	private final AtomicInteger sessionGeneration = new AtomicInteger();
 	private volatile boolean proofsStopped;
 	private volatile ScheduledFuture<?> eventEndTask;
+	private volatile ScheduledFuture<?> realtimeTask;
+	private final AtomicInteger realtimeGeneration = new AtomicInteger();
+	private static final long REALTIME_QUIET_MS = 1000;
 	private String raidChatName;
 	private long raidChatAt;
 	private final Map<String, CompletionSeen> completionCounts = new HashMap<>();
@@ -144,6 +147,7 @@ public class NylocasPlugin extends Plugin
 		loggingIn = false;
 		awaitLogin = false;
 		cancelEventEnd();
+		cancelRealtime();
 		if (overlay != null)
 		{
 			overlayManager.remove(overlay);
@@ -275,6 +279,14 @@ public class NylocasPlugin extends Plugin
 		if (NylocasConfig.CONNECT_WEBSOCKET.equals(event.getKey()))
 		{
 			SwingUtilities.invokeLater(this::refreshSessionButton);
+			scheduleRealtime();
+			return;
+		}
+		if (NylocasConfig.RECEIVE_ENEMY.equals(event.getKey())
+			|| NylocasConfig.RECEIVE_ENEMY_REJECTIONS.equals(event.getKey())
+			|| NylocasConfig.ENEMY_EVENT_DROP.equals(event.getKey()))
+		{
+			SwingUtilities.invokeLater(this::pushEnemyFilters);
 		}
 	}
 
@@ -408,6 +420,7 @@ public class NylocasPlugin extends Plugin
 	{
 		sessionGeneration.incrementAndGet();
 		cancelEventEnd();
+		cancelRealtime();
 		if (proofs != null)
 		{
 			proofs.cancelUploads();
@@ -446,6 +459,84 @@ public class NylocasPlugin extends Plugin
 		{
 			current.socketFinished();
 		}
+	}
+
+	void refreshEnemyFilters(EventWebsocket socket)
+	{
+		socket.useEnemyFilters(config.receiveEnemy(), config.receiveEnemyRejections(), config.enemyEventDrop());
+	}
+
+	private void pushEnemyFilters()
+	{
+		if (!running || websocket == null)
+		{
+			return;
+		}
+		websocket.pushEnemyFilters(config.receiveEnemy(), config.receiveEnemyRejections(), config.enemyEventDrop());
+	}
+
+	private void scheduleRealtime()
+	{
+		int ticket = realtimeGeneration.incrementAndGet();
+		ScheduledFuture<?> previous = realtimeTask;
+		realtimeTask = executor.schedule(() ->
+		{
+			if (ticket != realtimeGeneration.get())
+			{
+				return;
+			}
+			SwingUtilities.invokeLater(() -> applyRealtime(ticket));
+		}, REALTIME_QUIET_MS, TimeUnit.MILLISECONDS);
+		if (previous != null)
+		{
+			previous.cancel(false);
+		}
+	}
+
+	private void cancelRealtime()
+	{
+		realtimeGeneration.incrementAndGet();
+		ScheduledFuture<?> task = realtimeTask;
+		realtimeTask = null;
+		if (task != null)
+		{
+			task.cancel(false);
+		}
+	}
+
+	private void applyRealtime(int ticket)
+	{
+		if (!running || ticket != realtimeGeneration.get() || websocket == null || board == null)
+		{
+			return;
+		}
+		EventPanel current = panel;
+		if (current == null || !current.sessionUp())
+		{
+			return;
+		}
+		if (!config.connectWebsocket())
+		{
+			if (websocket.isLive())
+			{
+				websocket.stop();
+			}
+			return;
+		}
+		if (websocket.isLive() || board.afterEnd())
+		{
+			return;
+		}
+		Instant starts = board.startsAt();
+		Instant ends = board.endsAt();
+		if (starts == null || ends == null)
+		{
+			return;
+		}
+		EventBoard timing = new EventBoard();
+		timing.startsAt = starts.toString();
+		timing.endsAt = ends.toString();
+		openWebsocket(timing);
 	}
 
 	void openWebsocket(EventBoard event)

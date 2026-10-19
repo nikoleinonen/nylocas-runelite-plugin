@@ -13,6 +13,9 @@ public interface NylocasConfig extends Config
 	String GROUP = "nylocas-clan-events";
 	String TEAM_KEY = "teamKey";
 	String CONNECT_WEBSOCKET = "connectWebsocket";
+	String RECEIVE_ENEMY = "receiveEnemy";
+	String RECEIVE_ENEMY_REJECTIONS = "receiveEnemyRejections";
+	String ENEMY_EVENT_DROP = "enemyEventDrop";
 
 	@ConfigSection(
 		name = "Event",
@@ -165,7 +168,7 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "enemyEventDrop",
+		keyName = ENEMY_EVENT_DROP,
 		name = "Enemy team event drop",
 		description = "Show a chat message when an enemy team submits a drop for an event tile.",
 		position = 4,
@@ -177,7 +180,7 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "receiveEnemy",
+		keyName = RECEIVE_ENEMY,
 		name = "Enemy team approvals",
 		description = "Show a chat message when an enemy team's submission is approved.",
 		position = 5,
@@ -189,7 +192,7 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "receiveEnemyRejections",
+		keyName = RECEIVE_ENEMY_REJECTIONS,
 		name = "Enemy team rejections",
 		description = "Show a chat message when an enemy team's submission is rejected or deleted.",
 		position = 6,

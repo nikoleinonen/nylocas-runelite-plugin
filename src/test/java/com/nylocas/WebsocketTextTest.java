@@ -73,6 +73,14 @@ public class WebsocketTextTest
 	}
 
 	@Test
+	public void writesAFilterFrame()
+	{
+		assertEquals(
+			"{\"type\":\"filter\",\"enemy\":1,\"enemy_reject\":0,\"enemy_drop\":1}",
+			EventWebsocket.filterText(true, false, true));
+	}
+
+	@Test
 	public void buildsTheLiveUrl()
 	{
 		assertEquals(

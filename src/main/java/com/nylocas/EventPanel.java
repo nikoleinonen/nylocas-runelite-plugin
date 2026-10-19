@@ -222,6 +222,11 @@ final class EventPanel extends PluginPanel
 		updateSessionButton();
 	}
 
+	boolean sessionUp()
+	{
+		return connected && !stopped;
+	}
+
 	private JPanel linkCell(String resource, String tooltip, String url)
 	{
 		JPanel cell = new JPanel(new GridBagLayout());
