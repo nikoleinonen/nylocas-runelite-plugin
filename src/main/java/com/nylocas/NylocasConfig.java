@@ -121,8 +121,8 @@ public interface NylocasConfig extends Config
 
 	@ConfigItem(
 		keyName = "receiveRank",
-		name = "Position changes",
-		description = "Show a chat message when a team takes the lead.",
+		name = "First place changes",
+		description = "Show a chat message when a team takes the lead or wins the event.",
 		position = 0,
 		section = notificationsSection
 	)
@@ -133,8 +133,8 @@ public interface NylocasConfig extends Config
 
 	@ConfigItem(
 		keyName = "eventDrop",
-		name = "Own team event drop",
-		description = "Show a chat message when you receive a drop for an event tile, and when a teammate receives one. Auto submission adds \", auto submitted\".",
+		name = "Own team drops",
+		description = "Show a chat message when you receive a drop for an event tile, and when a teammate receives one.",
 		position = 1,
 		section = notificationsSection
 	)
@@ -169,7 +169,7 @@ public interface NylocasConfig extends Config
 
 	@ConfigItem(
 		keyName = ENEMY_EVENT_DROP,
-		name = "Enemy team event drop",
+		name = "Enemy team drops",
 		description = "Show a chat message when an enemy team receives a drop for an event tile.",
 		position = 4,
 		section = notificationsSection

@@ -907,7 +907,10 @@ public class NylocasPlugin extends Plugin
 				uploadProofs = false;
 			}
 		}
-		notifyEventDrops(tiles, sourceName, lootReceived.getItems(), uploadProofs, targets);
+		if (!board.beforeStart())
+		{
+			notifyEventDrops(tiles, sourceName, lootReceived.getItems(), uploadProofs, targets);
+		}
 		if (live && !proofKey.isEmpty() && proofPlayerId != 0)
 		{
 			List<AllowedDrops.ProofTarget> announced = uploadProofs ? targets : matchedTargets(tiles, sourceName, lootReceived.getItems());

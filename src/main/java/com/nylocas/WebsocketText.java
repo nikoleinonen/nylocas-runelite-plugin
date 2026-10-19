@@ -12,7 +12,7 @@ final class WebsocketText
 
 	static String eventDrop(String dropName, String tileName, boolean autoSubmitted, Color dropColor, Color tileColor)
 	{
-		String line = "Event drop: " + accent(dropName, dropColor) + " for " + accent(tileName, tileColor);
+		String line = "You got: " + accent(dropName, dropColor) + " for " + accent(tileName, tileColor);
 		if (autoSubmitted)
 		{
 			line += ", auto submitted";
@@ -22,7 +22,7 @@ final class WebsocketText
 
 	static String teamEventDrop(String teamName, String dropName, String tileName, Color teamColor, Color dropColor, Color tileColor)
 	{
-		return accent(teamName, teamColor) + "'s event drop: " + accent(dropName, dropColor) + " for " + accent(tileName, tileColor);
+		return accent(teamName, teamColor) + " got a drop: " + accent(dropName, dropColor) + " for " + accent(tileName, tileColor);
 	}
 
 	static String approved(String teamName, String tileTitle, boolean complete, Color teamColor, Color tileColor)
@@ -31,7 +31,7 @@ final class WebsocketText
 		String line = accent(teamName, teamColor) + "'s submission for " + tile + " got approved";
 		if (complete)
 		{
-			line += " and that completed the tile: " + tile;
+			line += " and that completes the tile: " + tile;
 		}
 		return line;
 	}
