@@ -923,7 +923,7 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		proofs.capture(this::pluginDirectory, board.eventName(), labels, saveLocally, uploadProofs, targets, proofPlayerId, proofKey, completionCount(sourceName));
+		proofs.capture(this::pluginDirectory, board.eventName(), labels, saveLocally, uploadProofs, targets, proofPlayerId, proofKey, completionCount(sourceName), config.hidePrivateMessages());
 	}
 
 	private Filepath pluginDirectory() throws IOException

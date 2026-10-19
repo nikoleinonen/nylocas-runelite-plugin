@@ -20,6 +20,8 @@ import javax.imageio.ImageIO;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.ui.DrawManager;
 import net.runelite.client.util.ColorUtil;
@@ -49,6 +51,7 @@ final class ProofUploader
 	private final IntConsumer onEventEnded;
 	private final List<Call> proofCalls = new ArrayList<>();
 	private volatile boolean running;
+	private boolean privateChatHidden;
 
 	ProofUploader(Client client, ClientThread clientThread, DrawManager drawManager, ScheduledExecutorService executor, OkHttpClient okHttpClient, Gson gson, IntSupplier sessionId, BooleanSupplier eventAfterEnd, IntConsumer onEventEnded)
 	{
@@ -92,12 +95,51 @@ final class ProofUploader
 		}
 	}
 
-	void capture(Directory directory, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<AllowedDrops.ProofTarget> proofs, long playerId, String proofKey, Integer completions)
+	void capture(Directory directory, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<AllowedDrops.ProofTarget> proofs, long playerId, String proofKey, Integer completions, boolean hidePrivateMessages)
 	{
+		if (hidePrivateMessages)
+		{
+			hidePrivateChat();
+		}
 		drawManager.requestNextFrameListener(image ->
 		{
-			BufferedImage shot = copyFrame(image);
-			executor.execute(() -> saveAndUploadScreenshot(directory, shot, eventName, labels, saveLocally, uploadProofs, proofs, playerId, proofKey, completions));
+			try
+			{
+				BufferedImage shot = copyFrame(image);
+				executor.execute(() -> saveAndUploadScreenshot(directory, shot, eventName, labels, saveLocally, uploadProofs, proofs, playerId, proofKey, completions));
+			}
+			finally
+			{
+				showPrivateChat();
+			}
+		});
+	}
+
+	private void hidePrivateChat()
+	{
+		Widget widget = client.getWidget(InterfaceID.PmChat.CONTAINER);
+		if (widget == null || widget.isHidden())
+		{
+			return;
+		}
+		widget.setHidden(true);
+		privateChatHidden = true;
+	}
+
+	private void showPrivateChat()
+	{
+		if (!privateChatHidden)
+		{
+			return;
+		}
+		privateChatHidden = false;
+		clientThread.invoke(() ->
+		{
+			Widget widget = client.getWidget(InterfaceID.PmChat.CONTAINER);
+			if (widget != null)
+			{
+				widget.setHidden(false);
+			}
 		});
 	}
 

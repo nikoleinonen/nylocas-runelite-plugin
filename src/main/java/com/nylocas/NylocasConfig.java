@@ -120,6 +120,18 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "hidePrivateMessages",
+		name = "Hide private messages",
+		description = "Leave private messages out of the drop screenshot, both the local copy and the image sent to nylocas.com. The private chat can flicker for one frame. Split friends private chat must be enabled in the game settings, or those messages stay in the chat box.",
+		position = 2,
+		section = submissionsSection
+	)
+	default boolean hidePrivateMessages()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "receiveRank",
 		name = "First place changes",
 		description = "Show a chat message when a team takes the lead or wins the event.",
