@@ -22,7 +22,10 @@ import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -99,6 +102,9 @@ public class NylocasPlugin extends Plugin
 	private String raidChatName;
 	private long raidChatAt;
 	private final Map<String, CompletionSeen> completionCounts = new HashMap<>();
+	private boolean loggingIn;
+	private boolean awaitLogin;
+	private volatile boolean loginScreen;
 
 	@Provides
 	NylocasConfig provideConfig(ConfigManager configManager)
@@ -110,7 +116,8 @@ public class NylocasPlugin extends Plugin
 	protected void startUp() throws Exception
 	{
 		running = true;
-		board = new EventBoardClient(okHttpClient, gson, clientThread, itemManager);
+		loginScreen = client.getGameState() == GameState.LOGIN_SCREEN;
+		board = new EventBoardClient(okHttpClient, gson, clientThread, itemManager, this::localPlayerName);
 		websocket = new EventWebsocket(okHttpClient, gson, executor, this);
 		proofs = new ProofUploader(client, clientThread, drawManager, executor, okHttpClient, gson, this::sessionId, this::eventAfterEnd, this::onProofEventEnded);
 		board.start();
@@ -134,6 +141,8 @@ public class NylocasPlugin extends Plugin
 	protected void shutDown() throws Exception
 	{
 		running = false;
+		loggingIn = false;
+		awaitLogin = false;
 		cancelEventEnd();
 		if (overlay != null)
 		{
@@ -198,6 +207,60 @@ public class NylocasPlugin extends Plugin
 	}
 
 	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		GameState state = event.getGameState();
+		boolean screen = state == GameState.LOGIN_SCREEN;
+		if (screen != loginScreen)
+		{
+			loginScreen = screen;
+			if (!screen)
+			{
+				SwingUtilities.invokeLater(this::refreshSessionButton);
+			}
+		}
+		if (state == GameState.LOGGING_IN)
+		{
+			loggingIn = true;
+			awaitLogin = false;
+			return;
+		}
+		if (state == GameState.LOGGED_IN && loggingIn)
+		{
+			loggingIn = false;
+			awaitLogin = true;
+			return;
+		}
+		if (state == GameState.LOGIN_SCREEN)
+		{
+			loggingIn = false;
+			awaitLogin = false;
+			if (websocket != null && websocket.isLive())
+			{
+				websocket.stop();
+			}
+			SwingUtilities.invokeLater(this::closeEventForLogout);
+			return;
+		}
+		if (state == GameState.HOPPING)
+		{
+			loggingIn = false;
+			awaitLogin = false;
+		}
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		if (!awaitLogin || !running || client.getLocalPlayer() == null)
+		{
+			return;
+		}
+		awaitLogin = false;
+		onLogin();
+	}
+
+	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
 		if (!NylocasConfig.GROUP.equals(event.getGroup()))
@@ -230,6 +293,15 @@ public class NylocasPlugin extends Plugin
 		if (running && current != null)
 		{
 			current.onWebsocketChanged();
+		}
+	}
+
+	private void closeEventForLogout()
+	{
+		EventPanel current = panel;
+		if (running && current != null)
+		{
+			current.closeBecauseLoggedOut();
 		}
 	}
 
@@ -312,6 +384,11 @@ public class NylocasPlugin extends Plugin
 	boolean websocketEnabled()
 	{
 		return config.connectWebsocket();
+	}
+
+	boolean atLoginScreen()
+	{
+		return loginScreen;
 	}
 
 	void refreshEvent(int openRow, int rowTicket)
@@ -607,6 +684,42 @@ public class NylocasPlugin extends Plugin
 		}
 		String ours = board.teamName();
 		return ours != null && !ours.isEmpty() && ours.equals(leader);
+	}
+
+	private void onLogin()
+	{
+		if (!running || teamKey().isEmpty())
+		{
+			return;
+		}
+		if (!config.autoConnect())
+		{
+			chat(LoginText.reminder(config.connectWebsocket()));
+			return;
+		}
+		EventPanel current = panel;
+		if (current == null)
+		{
+			return;
+		}
+		SwingUtilities.invokeLater(current::connectOnLogin);
+	}
+
+	void announceSession(EventBoard board, boolean reconnected)
+	{
+		String eventName = board == null || board.eventName == null ? "" : board.eventName;
+		String teamName = board == null || board.teamName == null ? "" : board.teamName;
+		if (reconnected)
+		{
+			chat(LoginText.reconnected(eventName, teamName));
+			return;
+		}
+		if (config.connectWebsocket())
+		{
+			chat(LoginText.connected(eventName, teamName));
+			return;
+		}
+		chat(LoginText.fetched(eventName, teamName));
 	}
 
 	private void chat(String line)

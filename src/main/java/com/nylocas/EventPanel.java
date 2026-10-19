@@ -94,6 +94,7 @@ final class EventPanel extends PluginPanel
 	private boolean fetching;
 	private boolean refreshingBoard;
 	private boolean connected;
+	private Announce announce = Announce.NONE;
 	private volatile boolean acceptBoard;
 	private volatile boolean stopped;
 	private long cooldownUntil;
@@ -252,8 +253,47 @@ final class EventPanel extends PluginPanel
 		return plugin.teamKey();
 	}
 
+	void connectOnLogin()
+	{
+		if (stopped || fetching || plugin.atLoginScreen())
+		{
+			return;
+		}
+		String key = currentKey();
+		if (key.isEmpty())
+		{
+			return;
+		}
+		if (connected)
+		{
+			plugin.endSession();
+			connected = false;
+		}
+		announce = Announce.OPEN;
+		fetching = true;
+		refreshingBoard = false;
+		acceptBoard = true;
+		updateSessionButton();
+		status.setText("Fetching...");
+		clearRank();
+		clearBoard();
+		if (!plugin.fetchEvent(key, this))
+		{
+			announce = Announce.NONE;
+			fetching = false;
+			updateSessionButton();
+			return;
+		}
+		startCooldown();
+	}
+
 	private void session()
 	{
+		announce = Announce.NONE;
+		if (plugin.atLoginScreen() && !(connected && plugin.websocketEnabled()))
+		{
+			return;
+		}
 		if (connected && plugin.websocketEnabled())
 		{
 			disconnect();
@@ -282,12 +322,16 @@ final class EventPanel extends PluginPanel
 			updateSessionButton();
 			return;
 		}
+		if (!refresh)
+		{
+			announce = Announce.OPEN;
+		}
 		startCooldown();
 	}
 
 	private void reconnect()
 	{
-		if (!connected || !plugin.websocketEnabled() || fetching || coolingDown())
+		if (plugin.atLoginScreen() || !connected || !plugin.websocketEnabled() || fetching || coolingDown())
 		{
 			return;
 		}
@@ -296,6 +340,7 @@ final class EventPanel extends PluginPanel
 		{
 			return;
 		}
+		announce = Announce.RECONNECT;
 		fetching = true;
 		refreshingBoard = true;
 		acceptBoard = true;
@@ -303,6 +348,7 @@ final class EventPanel extends PluginPanel
 		status.setText("Fetching...");
 		if (!plugin.fetchEvent(key, this))
 		{
+			announce = Announce.NONE;
 			fetching = false;
 			refreshingBoard = false;
 			updateSessionButton();
@@ -311,12 +357,27 @@ final class EventPanel extends PluginPanel
 		startCooldown();
 	}
 
+	void closeBecauseLoggedOut()
+	{
+		if (stopped)
+		{
+			return;
+		}
+		if (!connected && !fetching && cells.isEmpty())
+		{
+			updateSessionButton();
+			return;
+		}
+		disconnect();
+	}
+
 	private void disconnect()
 	{
 		connected = false;
 		fetching = false;
 		refreshingBoard = false;
 		acceptBoard = false;
+		announce = Announce.NONE;
 		plugin.endSession();
 		clearRank();
 		clearBoard();
@@ -358,6 +419,16 @@ final class EventPanel extends PluginPanel
 		return System.currentTimeMillis() < cooldownUntil;
 	}
 
+	void closeNotOnTeam()
+	{
+		if (stopped)
+		{
+			return;
+		}
+		disconnect();
+		status.setText("You are not on this team");
+	}
+
 	void showStatus(String message)
 	{
 		if (stopped)
@@ -365,6 +436,7 @@ final class EventPanel extends PluginPanel
 			return;
 		}
 		fetching = false;
+		announce = Announce.NONE;
 		if (refreshingBoard)
 		{
 			refreshingBoard = false;
@@ -416,6 +488,12 @@ final class EventPanel extends PluginPanel
 		{
 			plugin.openWebsocket(board);
 			plugin.noteSession(board);
+			if (announce != Announce.NONE)
+			{
+				boolean reconnected = announce == Announce.RECONNECT;
+				announce = Announce.NONE;
+				plugin.announceSession(board, reconnected);
+			}
 		}
 	}
 
@@ -1273,12 +1351,20 @@ final class EventPanel extends PluginPanel
 			sessionButtons.repaint();
 		}
 		boolean busy = stopped || fetching;
+		boolean loggedIn = !plugin.atLoginScreen();
 		if (showReconnect)
 		{
 			sessionButton.setEnabled(!busy);
-			reconnectButton.setEnabled(!busy && !currentKey().isEmpty() && !coolingDown());
+			reconnectButton.setEnabled(loggedIn && !busy && !currentKey().isEmpty() && !coolingDown());
 			return;
 		}
-		sessionButton.setEnabled(!busy && !currentKey().isEmpty() && !coolingDown());
+		sessionButton.setEnabled(loggedIn && !busy && !currentKey().isEmpty() && !coolingDown());
+	}
+
+	private enum Announce
+	{
+		NONE,
+		OPEN,
+		RECONNECT
 	}
 }

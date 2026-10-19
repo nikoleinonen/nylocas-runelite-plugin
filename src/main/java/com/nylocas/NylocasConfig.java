@@ -58,7 +58,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = CONNECT_WEBSOCKET,
 		name = "Enable real-time updates",
-		description = "Keep your team's board up to date while the session is connected. Takes effect the next time you load the event.",
+		description = "Keep your team's board up to date while the session is connected. This setting also allows you to get notifications of various things listed under 'Notifications' section. To get automatic updates on event code, this must be enabled.",
 		position = 1,
 		section = eventSection
 	)
@@ -68,11 +68,23 @@ public interface NylocasConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "autoConnect",
+		name = "Auto-connect/fetch event upon login",
+		description = "Upon loggin in, connect or fetch the event automatically. 'Enable real-time updates' determines if you connect or only fetch it once.",
+		position = 2,
+		section = eventSection
+	)
+	default boolean autoConnect()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = TEAM_KEY,
 		name = "Team key",
 		description = "Your team's event key",
 		secret = true,
-		position = 2,
+		position = 3,
 		section = eventSection
 	)
 	default String teamKey()
@@ -155,7 +167,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "enemyEventDrop",
 		name = "Enemy team event drop",
-		description = "Show a chat message when an enemy team submits a drop for an event tile. Requires Connect to WebSocket.",
+		description = "Show a chat message when an enemy team submits a drop for an event tile.",
 		position = 4,
 		section = notificationsSection
 	)
@@ -263,7 +275,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "eventCode",
 		name = "Event code",
-		description = "Used when the loaded event has no code. A code from the event replaces this.",
+		description = "Used when the loaded event has no code. A code from the event replaces this. For this to update in real-time if organizer changes is, 'Enable real-time updates' must be enabled.",
 		position = 1,
 		section = overlaySection
 	)

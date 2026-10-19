@@ -20,6 +20,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import javax.imageio.ImageIO;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +40,7 @@ final class EventBoardClient
 	private final Gson gson;
 	private final ClientThread clientThread;
 	private final ItemManager itemManager;
+	private final Supplier<String> loggedInName;
 
 	private static final int MAX_IMAGE_BYTES = 1 << 20;
 
@@ -58,12 +60,13 @@ final class EventBoardClient
 	private volatile Instant startsAt;
 	private volatile Instant endsAt;
 
-	EventBoardClient(OkHttpClient okHttpClient, Gson gson, ClientThread clientThread, ItemManager itemManager)
+	EventBoardClient(OkHttpClient okHttpClient, Gson gson, ClientThread clientThread, ItemManager itemManager, Supplier<String> loggedInName)
 	{
 		this.okHttpClient = okHttpClient;
 		this.gson = gson;
 		this.clientThread = clientThread;
 		this.itemManager = itemManager;
+		this.loggedInName = loggedInName;
 	}
 
 	void start()
@@ -399,11 +402,31 @@ final class EventBoardClient
 						return;
 					}
 					EventBoard board = gson.fromJson(body, EventBoard.class);
-					deliver(panel, board, ticket, true, 0);
+					clientThread.invoke(() -> acceptFetched(panel, board, ticket));
 				}
 			}
 		});
 		return true;
+	}
+
+	private void acceptFetched(EventPanel panel, EventBoard board, int ticket)
+	{
+		if (!running || ticket != generation.get())
+		{
+			return;
+		}
+		if (AllowedDrops.playerId(board == null ? null : board.players, loggedInName.get()) == 0)
+		{
+			SwingUtilities.invokeLater(() ->
+			{
+				if (running && ticket == generation.get())
+				{
+					panel.closeNotOnTeam();
+				}
+			});
+			return;
+		}
+		deliver(panel, board, ticket, true, 0);
 	}
 
 	private void loadPictures(List<EventTile> boardTiles, int ticket, Consumer<Map<String, BufferedImage>> done)

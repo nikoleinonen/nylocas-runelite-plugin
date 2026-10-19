@@ -139,11 +139,7 @@ final class ProofUploader
 			boolean saved = saveScreenshot(directory, png, eventName, labels);
 			if (!uploadProofs)
 			{
-				if (saved)
-				{
-					postGameMessage("Saved screenshot");
-				}
-				else
+				if (!saved)
 				{
 					postGameMessage(ColorUtil.wrapWithColorTag("Could not save screenshot", Color.RED));
 				}
