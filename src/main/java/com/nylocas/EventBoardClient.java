@@ -75,25 +75,6 @@ final class EventBoardClient
 		running = true;
 	}
 
-	int pending(long tileId, String itemKey)
-	{
-		for (EventTile tile : tiles)
-		{
-			if (tile == null || tile.id != tileId || tile.items == null)
-			{
-				continue;
-			}
-			for (EventItem item : tile.items)
-			{
-				if (item != null && itemKey != null && itemKey.equals(item.key))
-				{
-					return item.pending;
-				}
-			}
-		}
-		return 0;
-	}
-
 	void noteProgress(long tileId, String itemKey, int approved, int pending, boolean complete)
 	{
 		for (EventTile tile : tiles)
