@@ -5,7 +5,6 @@ import com.google.gson.annotations.SerializedName;
 import com.google.inject.Provides;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayDeque;
@@ -62,7 +61,6 @@ import okhttp3.Response;
 public class NylocasPlugin extends Plugin
 {
 	static final String API_BASE = "https://api.nylocas.com";
-	private static final String TEAM_KEY_FILE = "team-key";
 
 	@Inject
 	private Client client;
@@ -92,12 +90,8 @@ public class NylocasPlugin extends Plugin
 	private NylocasConfig config;
 
 	@Inject
-	private ConfigManager configManager;
-
-	@Inject
 	private ScheduledExecutorService executor;
 
-	private final Object keyFileLock = new Object();
 	private NavigationButton navButton;
 	private EventCodeOverlay overlay;
 	private volatile EventPanel panel;
@@ -148,7 +142,6 @@ public class NylocasPlugin extends Plugin
 			.panel(panel)
 			.build();
 		syncSidebar();
-		executor.execute(this::migrateTeamKey);
 		log.debug("Nylocas started");
 	}
 
@@ -363,77 +356,6 @@ public class NylocasPlugin extends Plugin
 		{
 			current.loggedOut();
 		}
-	}
-
-	private void migrateTeamKey()
-	{
-		if (!running)
-		{
-			return;
-		}
-		if (teamKey().isEmpty())
-		{
-			String legacy = readTeamKey();
-			if (legacy == null)
-			{
-				return;
-			}
-			if (!legacy.isEmpty() && running)
-			{
-				configManager.setConfiguration(NylocasConfig.GROUP, NylocasConfig.TEAM_KEY, legacy);
-			}
-		}
-		if (!running)
-		{
-			return;
-		}
-		deleteTeamKeyFile();
-		SwingUtilities.invokeLater(this::refreshPanelKey);
-	}
-
-	private String readTeamKey()
-	{
-		synchronized (keyFileLock)
-		{
-			try
-			{
-				Filepath file = teamKeyFile();
-				if (!file.isFile())
-				{
-					return "";
-				}
-				try (BufferedReader reader = file.openBufferedReader())
-				{
-					String line = reader.readLine();
-					return line == null ? "" : line.trim();
-				}
-			}
-			catch (IOException ex)
-			{
-				log.warn("Could not read the saved team key", ex);
-				return null;
-			}
-		}
-	}
-
-	private void deleteTeamKeyFile()
-	{
-		synchronized (keyFileLock)
-		{
-			try
-			{
-				teamKeyFile().deleteIfExists();
-			}
-			catch (IOException ex)
-			{
-				log.warn("Could not remove the saved team key file", ex);
-			}
-		}
-	}
-
-	private Filepath teamKeyFile() throws IOException
-	{
-		return getPluginDirectory().joinSegment(TEAM_KEY_FILE);
 	}
 
 	boolean fetchEvent(String key, EventPanel panel)
