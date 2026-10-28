@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
@@ -69,12 +70,18 @@ final class EventPanel extends PluginPanel
 	private static final String GITHUB_URL = "https://github.com/nikoleinonen/nylocas-runelite-plugin";
 	private static final String WEBSITE_URL = "https://nylocas.com/";
 	private static final String KEY_HINT = "Set team key in config";
+	private static final String EVENT_ENDED = "The event has ended";
+	private static final String EVENT_NOT_FOUND = "No event found for the provided team key";
 
 	private final NylocasPlugin plugin;
 	private final JButton sessionButton = new JButton("Connect");
 	private final JButton reconnectButton = new JButton("Reconnect");
 	private final JPanel sessionButtons = new JPanel(new GridLayout(1, 1));
 	private final JLabel status = new ShrinkLabel(" ");
+	private final JLabel notice = new JLabel();
+	private final JPanel noticeHost = new JPanel(new GridBagLayout());
+	private boolean centeredNotice;
+	private String noticeMessage = "";
 	private final JLabel rank = new JLabel();
 	private final JPanel statusRow = new ShrinkWidth(new BorderLayout(8, 0));
 	private final JPanel gridHost = new JPanel();
@@ -163,6 +170,26 @@ final class EventPanel extends PluginPanel
 		detail.setBorder(new EmptyBorder(8, PluginPanel.BORDER_OFFSET, 0, PluginPanel.BORDER_OFFSET));
 		add(detail);
 
+		notice.setForeground(ColorScheme.TEXT_COLOR);
+		notice.setHorizontalAlignment(JLabel.CENTER);
+		noticeHost.setOpaque(false);
+		noticeHost.setVisible(false);
+		GridBagConstraints noticeConstraints = new GridBagConstraints();
+		noticeConstraints.anchor = GridBagConstraints.CENTER;
+		noticeHost.add(notice, noticeConstraints);
+		add(noticeHost);
+		getScrollPane().getViewport().addComponentListener(new ComponentAdapter()
+		{
+			@Override
+			public void componentResized(ComponentEvent event)
+			{
+				if (centeredNotice)
+				{
+					fitCenteredNotice();
+				}
+			}
+		});
+
 		sessionButton.setFocusable(false);
 		sessionButton.setBackground(HEADER_COLOR);
 		sessionButton.setForeground(ColorScheme.TEXT_COLOR);
@@ -201,14 +228,14 @@ final class EventPanel extends PluginPanel
 		}
 		if (currentKey().isEmpty())
 		{
-			if (status.getText() == null || status.getText().isBlank())
+			if (!centeredNotice)
 			{
-				status.setText(KEY_HINT);
+				showMessage(KEY_HINT);
 			}
 		}
-		else if (KEY_HINT.equals(status.getText()))
+		else if (centeredNotice && KEY_HINT.equals(noticeMessage))
 		{
-			status.setText(" ");
+			showMessage(" ");
 		}
 		updateSessionButton();
 	}
@@ -279,7 +306,7 @@ final class EventPanel extends PluginPanel
 		refreshingBoard = false;
 		acceptBoard = true;
 		updateSessionButton();
-		status.setText("Fetching...");
+		showMessage("Fetching...");
 		clearRank();
 		clearBoard();
 		if (!plugin.fetchEvent(key, this))
@@ -314,7 +341,7 @@ final class EventPanel extends PluginPanel
 		refreshingBoard = refresh;
 		acceptBoard = true;
 		updateSessionButton();
-		status.setText("Fetching...");
+		showMessage("Fetching...");
 		if (!refresh)
 		{
 			clearRank();
@@ -350,7 +377,7 @@ final class EventPanel extends PluginPanel
 		refreshingBoard = true;
 		acceptBoard = true;
 		updateSessionButton();
-		status.setText("Fetching...");
+		showMessage("Fetching...");
 		if (!plugin.fetchEvent(key, this))
 		{
 			announce = Announce.NONE;
@@ -386,7 +413,7 @@ final class EventPanel extends PluginPanel
 		plugin.endSession();
 		clearRank();
 		clearBoard();
-		status.setText(currentKey().isEmpty() ? KEY_HINT : " ");
+		showMessage(currentKey().isEmpty() ? KEY_HINT : " ");
 		updateSessionButton();
 	}
 
@@ -431,7 +458,20 @@ final class EventPanel extends PluginPanel
 			return;
 		}
 		disconnect();
-		status.setText("You are not on this team");
+		showMessage("You are not on this team");
+	}
+
+	static String fetchStatus(String error)
+	{
+		if ("event has ended".equals(error))
+		{
+			return EVENT_ENDED;
+		}
+		if ("unauthorized".equals(error) || "not found".equals(error))
+		{
+			return EVENT_NOT_FOUND;
+		}
+		return error;
 	}
 
 	void showStatus(String message)
@@ -442,19 +482,73 @@ final class EventPanel extends PluginPanel
 		}
 		fetching = false;
 		announce = Announce.NONE;
-		if (refreshingBoard)
-		{
-			refreshingBoard = false;
-			status.setText(message);
-			updateSessionButton();
-			return;
-		}
+		message = fetchStatus(message);
+		refreshingBoard = false;
 		connected = false;
 		acceptBoard = false;
-		status.setText(message);
 		clearRank();
 		clearBoard();
+		showMessage(message);
 		updateSessionButton();
+	}
+
+	private void showMessage(String message)
+	{
+		if (message == null || message.isBlank())
+		{
+			clearCenteredNotice();
+			status.setText(" ");
+			return;
+		}
+		showCenteredNotice(message);
+	}
+
+	private void showCenteredNotice(String message)
+	{
+		centeredNotice = true;
+		noticeMessage = message;
+		notice.setText("<html><body style='text-align: center; width: " + TEXT_WIDTH + "px'>" + escape(message) + "</body></html>");
+		status.setText(" ");
+		statusRow.setPreferredSize(new Dimension(0, 0));
+		gridHost.setPreferredSize(new Dimension(0, 0));
+		detail.setPreferredSize(new Dimension(0, 0));
+		noticeHost.setVisible(true);
+		fitCenteredNotice();
+		revalidate();
+		repaint();
+	}
+
+	private void clearCenteredNotice()
+	{
+		if (!centeredNotice)
+		{
+			return;
+		}
+		centeredNotice = false;
+		noticeMessage = "";
+		noticeHost.setVisible(false);
+		noticeHost.setPreferredSize(null);
+		statusRow.setPreferredSize(null);
+		gridHost.setPreferredSize(null);
+		detail.setPreferredSize(null);
+		revalidate();
+		repaint();
+	}
+
+	private void fitCenteredNotice()
+	{
+		int view = getScrollPane().getViewport().getHeight();
+		Insets insets = getInsets();
+		int vgap = getLayout() instanceof GridLayout ? ((GridLayout) getLayout()).getVgap() : 0;
+		int gaps = Math.max(0, getComponentCount() - 1) * vgap;
+		int inner = Math.max(1, view - insets.top - insets.bottom - gaps);
+		Dimension next = new Dimension(PluginPanel.PANEL_WIDTH, inner);
+		if (next.equals(noticeHost.getPreferredSize()))
+		{
+			return;
+		}
+		noticeHost.setPreferredSize(next);
+		revalidate();
 	}
 
 	void showBoard(EventBoard board, Map<Integer, String> names, Map<Integer, AsyncBufferedImage> images, Map<Long, TileIcons.Picture> tilePictures, boolean reopenSocket, int rowTicket)
@@ -465,6 +559,7 @@ final class EventPanel extends PluginPanel
 		}
 		fetching = false;
 		refreshingBoard = false;
+		clearCenteredNotice();
 		connected = true;
 		refreshingRow = false;
 		status.setText(teamLabel(board));

@@ -17,4 +17,13 @@ public class EventPanelRankTest
 		assertEquals(new Color(0xc4894a), EventPanel.rankColor("3rd"));
 		assertEquals(ColorScheme.TEXT_COLOR, EventPanel.rankColor("4th"));
 	}
+
+	@Test
+	public void separatesAnEndedEventFromAnUnknownKey()
+	{
+		assertEquals("The event has ended", EventPanel.fetchStatus("event has ended"));
+		assertEquals("No event found for the provided team key", EventPanel.fetchStatus("unauthorized"));
+		assertEquals("No event found for the provided team key", EventPanel.fetchStatus("not found"));
+		assertEquals("Could not fetch event", EventPanel.fetchStatus("Could not fetch event"));
+	}
 }

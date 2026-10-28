@@ -147,7 +147,7 @@ public class NylocasPlugin extends Plugin
 			.priority(10)
 			.panel(panel)
 			.build();
-		clientToolbar.addNavigation(navButton);
+		syncSidebar();
 		executor.execute(this::migrateTeamKey);
 		log.debug("Nylocas started");
 	}
@@ -285,7 +285,23 @@ public class NylocasPlugin extends Plugin
 		}
 		if (NylocasConfig.TEAM_KEY.equals(event.getKey()))
 		{
-			SwingUtilities.invokeLater(this::refreshPanelKey);
+			SwingUtilities.invokeLater(() ->
+			{
+				refreshPanelKey();
+				syncSidebar();
+			});
+			return;
+		}
+		if (NylocasConfig.CONNECT.equals(event.getKey()))
+		{
+			SwingUtilities.invokeLater(() ->
+			{
+				if (!config.connect())
+				{
+					refreshPanelKey();
+				}
+				syncSidebar();
+			});
 			return;
 		}
 		if (NylocasConfig.CONNECT_WEBSOCKET.equals(event.getKey()))
@@ -309,6 +325,26 @@ public class NylocasPlugin extends Plugin
 		{
 			current.onTeamKeyChanged();
 		}
+	}
+
+	private boolean sidebarVisible()
+	{
+		return config.connect() && !teamKey().isEmpty();
+	}
+
+	private void syncSidebar()
+	{
+		NavigationButton button = navButton;
+		if (!running || button == null)
+		{
+			return;
+		}
+		if (sidebarVisible())
+		{
+			clientToolbar.addNavigation(button);
+			return;
+		}
+		clientToolbar.removeNavigation(button);
 	}
 
 	private void refreshSessionButton()
@@ -828,7 +864,7 @@ public class NylocasPlugin extends Plugin
 
 	private void onLogin()
 	{
-		if (!running || teamKey().isEmpty())
+		if (!running || !sidebarVisible())
 		{
 			return;
 		}

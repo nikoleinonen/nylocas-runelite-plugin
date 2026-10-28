@@ -11,6 +11,7 @@ import net.runelite.client.config.ConfigSection;
 public interface NylocasConfig extends Config
 {
 	String GROUP = "nylocas-clan-events";
+	String CONNECT = "connect";
 	String TEAM_KEY = "teamKey";
 	String CONNECT_WEBSOCKET = "connectWebsocket";
 	String RECEIVE_ENEMY = "receiveEnemy";
@@ -47,7 +48,7 @@ public interface NylocasConfig extends Config
 	String notificationsSection = "notifications";
 
 	@ConfigItem(
-		keyName = "connect",
+		keyName = CONNECT,
 		name = "Connect to nylocas.com",
 		description = "Allow the client to communicate with the nylocas.com backend to retrieve information and submit proofs. This must be enabled for anything to work.",
 		warning = "This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers",
@@ -86,7 +87,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = TEAM_KEY,
 		name = "Team key",
-		description = "Your team's event key",
+		description = "Your team's event key.",
 		secret = true,
 		position = 3,
 		section = eventSection
