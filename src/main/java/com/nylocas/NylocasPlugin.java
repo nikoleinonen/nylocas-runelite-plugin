@@ -255,7 +255,7 @@ public class NylocasPlugin extends Plugin
 			{
 				websocket.stop();
 			}
-			SwingUtilities.invokeLater(this::closeEventForLogout);
+			SwingUtilities.invokeLater(this::onLogout);
 			return;
 		}
 		if (state == GameState.HOPPING)
@@ -356,12 +356,12 @@ public class NylocasPlugin extends Plugin
 		}
 	}
 
-	private void closeEventForLogout()
+	private void onLogout()
 	{
 		EventPanel current = panel;
 		if (running && current != null)
 		{
-			current.closeBecauseLoggedOut();
+			current.loggedOut();
 		}
 	}
 
@@ -643,7 +643,7 @@ public class NylocasPlugin extends Plugin
 				return;
 			}
 			EventPanel current = panel;
-			if (current == null || !current.clearBecauseEventEnded())
+			if (current == null || !current.eventEnded())
 			{
 				return;
 			}

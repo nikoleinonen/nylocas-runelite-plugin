@@ -79,8 +79,8 @@ final class EventPanel extends PluginPanel
 	private final JPanel sessionButtons = new JPanel(new GridLayout(1, 1));
 	private final JLabel status = new ShrinkLabel(" ");
 	private final JLabel notice = new JLabel();
-	private final JPanel noticeHost = new JPanel(new GridBagLayout());
-	private boolean centeredNotice;
+	private final JPanel noticePanel = new JPanel(new GridBagLayout());
+	private boolean noticeShown;
 	private String noticeMessage = "";
 	private final JLabel rank = new JLabel();
 	private final JPanel statusRow = new ShrinkWidth(new BorderLayout(8, 0));
@@ -172,20 +172,20 @@ final class EventPanel extends PluginPanel
 
 		notice.setForeground(ColorScheme.TEXT_COLOR);
 		notice.setHorizontalAlignment(JLabel.CENTER);
-		noticeHost.setOpaque(false);
-		noticeHost.setVisible(false);
+		noticePanel.setOpaque(false);
+		noticePanel.setVisible(false);
 		GridBagConstraints noticeConstraints = new GridBagConstraints();
 		noticeConstraints.anchor = GridBagConstraints.CENTER;
-		noticeHost.add(notice, noticeConstraints);
-		add(noticeHost);
+		noticePanel.add(notice, noticeConstraints);
+		add(noticePanel);
 		getScrollPane().getViewport().addComponentListener(new ComponentAdapter()
 		{
 			@Override
 			public void componentResized(ComponentEvent event)
 			{
-				if (centeredNotice)
+				if (noticeShown)
 				{
-					fitCenteredNotice();
+					fitNotice();
 				}
 			}
 		});
@@ -228,12 +228,12 @@ final class EventPanel extends PluginPanel
 		}
 		if (currentKey().isEmpty())
 		{
-			if (!centeredNotice)
+			if (!noticeShown)
 			{
 				showMessage(KEY_HINT);
 			}
 		}
-		else if (centeredNotice && KEY_HINT.equals(noticeMessage))
+		else if (noticeShown && KEY_HINT.equals(noticeMessage))
 		{
 			showMessage(" ");
 		}
@@ -389,7 +389,7 @@ final class EventPanel extends PluginPanel
 		startCooldown();
 	}
 
-	void closeBecauseLoggedOut()
+	void loggedOut()
 	{
 		if (stopped)
 		{
@@ -451,7 +451,7 @@ final class EventPanel extends PluginPanel
 		return System.currentTimeMillis() < cooldownUntil;
 	}
 
-	void closeNotOnTeam()
+	void notOnTeam()
 	{
 		if (stopped)
 		{
@@ -496,38 +496,38 @@ final class EventPanel extends PluginPanel
 	{
 		if (message == null || message.isBlank())
 		{
-			clearCenteredNotice();
+			clearNotice();
 			status.setText(" ");
 			return;
 		}
-		showCenteredNotice(message);
+		showNotice(message);
 	}
 
-	private void showCenteredNotice(String message)
+	private void showNotice(String message)
 	{
-		centeredNotice = true;
+		noticeShown = true;
 		noticeMessage = message;
 		notice.setText("<html><body style='text-align: center; width: " + TEXT_WIDTH + "px'>" + escape(message) + "</body></html>");
 		status.setText(" ");
 		statusRow.setPreferredSize(new Dimension(0, 0));
 		gridHost.setPreferredSize(new Dimension(0, 0));
 		detail.setPreferredSize(new Dimension(0, 0));
-		noticeHost.setVisible(true);
-		fitCenteredNotice();
+		noticePanel.setVisible(true);
+		fitNotice();
 		revalidate();
 		repaint();
 	}
 
-	private void clearCenteredNotice()
+	private void clearNotice()
 	{
-		if (!centeredNotice)
+		if (!noticeShown)
 		{
 			return;
 		}
-		centeredNotice = false;
+		noticeShown = false;
 		noticeMessage = "";
-		noticeHost.setVisible(false);
-		noticeHost.setPreferredSize(null);
+		noticePanel.setVisible(false);
+		noticePanel.setPreferredSize(null);
 		statusRow.setPreferredSize(null);
 		gridHost.setPreferredSize(null);
 		detail.setPreferredSize(null);
@@ -535,7 +535,7 @@ final class EventPanel extends PluginPanel
 		repaint();
 	}
 
-	private void fitCenteredNotice()
+	private void fitNotice()
 	{
 		int view = getScrollPane().getViewport().getHeight();
 		Insets insets = getInsets();
@@ -543,11 +543,11 @@ final class EventPanel extends PluginPanel
 		int gaps = Math.max(0, getComponentCount() - 1) * vgap;
 		int inner = Math.max(1, view - insets.top - insets.bottom - gaps);
 		Dimension next = new Dimension(PluginPanel.PANEL_WIDTH, inner);
-		if (next.equals(noticeHost.getPreferredSize()))
+		if (next.equals(noticePanel.getPreferredSize()))
 		{
 			return;
 		}
-		noticeHost.setPreferredSize(next);
+		noticePanel.setPreferredSize(next);
 		revalidate();
 	}
 
@@ -559,7 +559,7 @@ final class EventPanel extends PluginPanel
 		}
 		fetching = false;
 		refreshingBoard = false;
-		clearCenteredNotice();
+		clearNotice();
 		connected = true;
 		refreshingRow = false;
 		status.setText(teamLabel(board));
@@ -1293,7 +1293,7 @@ final class EventPanel extends PluginPanel
 		return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
 	}
 
-	boolean clearBecauseEventEnded()
+	boolean eventEnded()
 	{
 		if (stopped || (!connected && cells.isEmpty() && !fetching))
 		{

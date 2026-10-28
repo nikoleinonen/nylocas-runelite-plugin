@@ -11,7 +11,7 @@ import static org.junit.Assert.assertTrue;
 public class AllowedDropsTest
 {
 	@Test
-	public void firstOpenTileInBoardOrder()
+	public void boardOrder()
 	{
 		EventTile later = seedTile();
 		later.id = 9;
@@ -48,7 +48,7 @@ public class AllowedDropsTest
 	}
 
 	@Test
-	public void secondDropMovesOnOnceTheFirstSlotIsReserved()
+	public void reservedSlot()
 	{
 		EventTile first = seedTile();
 		EventTile second = seedTile();
@@ -63,7 +63,7 @@ public class AllowedDropsTest
 	}
 
 	@Test
-	public void poolCountsEveryPendingDrop()
+	public void poolPending()
 	{
 		EventTile tile = seedTile();
 		tile.pool = true;
@@ -93,7 +93,7 @@ public class AllowedDropsTest
 	}
 
 	@Test
-	public void playerNameMatchesTheRoster()
+	public void playerName()
 	{
 		EventPlayer playerA = new EventPlayer();
 		playerA.id = 9;
@@ -112,7 +112,7 @@ public class AllowedDropsTest
 	}
 
 	@Test
-	public void anyKillFromAnAllowedSource()
+	public void allowedSource()
 	{
 		List<EventTile> tiles = List.of(seedTile());
 

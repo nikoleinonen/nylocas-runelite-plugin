@@ -26,7 +26,7 @@ public class RaidSourceTest
 	}
 
 	@Test
-	public void chestNeedsTheChatName()
+	public void chestName()
 	{
 		assertNull(RaidSource.resolve("Chambers of Xeric", null));
 		assertEquals("Chambers of Xeric", RaidSource.resolve("Chambers of Xeric", "Chambers of Xeric"));
@@ -35,7 +35,7 @@ public class RaidSourceTest
 	}
 
 	@Test
-	public void challengeModeDoesNotMatchNormal()
+	public void challengeMode()
 	{
 		EventTile normal = raidTile("Chambers of Xeric");
 		EventTile challenge = raidTile("Chambers of Xeric Challenge Mode");
@@ -47,7 +47,7 @@ public class RaidSourceTest
 	}
 
 	@Test
-	public void entryModeMatchesNeitherTombsSource()
+	public void entryMode()
 	{
 		EventTile normal = raidTile("Tombs of Amascut");
 		EventTile expert = raidTile("Tombs of Amascut: Expert Mode");

@@ -9,7 +9,7 @@ import static org.junit.Assert.assertTrue;
 public class TileTextTest
 {
 	@Test
-	public void namesTheItemAndSources()
+	public void itemAndSources()
 	{
 		EventItem seed = seedItem();
 
@@ -19,13 +19,13 @@ public class TileTextTest
 	}
 
 	@Test
-	public void fallsBackToCatalogName()
+	public void catalogName()
 	{
 		assertEquals("Crystal weapon seed", TileText.itemName(seedItem(), id -> null));
 	}
 
 	@Test
-	public void describesTileProgress()
+	public void tileProgress()
 	{
 		EventItem weapon = item("crystal_weapon_seed", 1, 1, 0, "The Gauntlet");
 		EventItem armour = item("crystal_armour_seed", 1, 0, 1, "The Gauntlet");

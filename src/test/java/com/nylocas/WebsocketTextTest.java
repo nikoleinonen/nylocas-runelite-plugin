@@ -49,7 +49,7 @@ public class WebsocketTextTest
 	}
 
 	@Test
-	public void colorsEnemyNamesSeparately()
+	public void enemyColor()
 	{
 		String team = ColorUtil.wrapWithColorTag("Red", ENEMY);
 		String tile = ColorUtil.wrapWithColorTag("Armadyl hilt", TILE);
@@ -67,7 +67,7 @@ public class WebsocketTextTest
 	}
 
 	@Test
-	public void stripsTagsInsideAnAccent()
+	public void stripsTags()
 	{
 		String leader = ColorUtil.wrapWithColorTag("Blue", ENEMY);
 		assertEquals(leader + " took the lead!", WebsocketText.rank("<col=ff0000>{team}</col> took the lead!", "Blue</col><col=ffffff>", ENEMY));
@@ -78,7 +78,7 @@ public class WebsocketTextTest
 	}
 
 	@Test
-	public void skipsABlankTemplate()
+	public void blankTemplate()
 	{
 		assertEquals("", WebsocketText.rank("  ", "Blue", OWN));
 		assertEquals("", WebsocketText.rank(null, "Blue", OWN));
@@ -86,7 +86,7 @@ public class WebsocketTextTest
 	}
 
 	@Test
-	public void writesAFilterFrame()
+	public void filterFrame()
 	{
 		assertEquals(
 			"{\"type\":\"filter\",\"enemy\":1,\"enemy_reject\":0,\"enemy_drop\":1}",
@@ -94,7 +94,7 @@ public class WebsocketTextTest
 	}
 
 	@Test
-	public void buildsTheLiveUrl()
+	public void liveUrl()
 	{
 		assertEquals(
 			"ws://127.0.0.1:8090/plugin/websocket/abc?rank=1&own=0&enemy=1&enemy_reject=0&enemy_drop=0",

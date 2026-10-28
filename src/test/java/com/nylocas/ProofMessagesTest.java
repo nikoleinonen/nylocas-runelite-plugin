@@ -10,7 +10,7 @@ import static org.junit.Assert.assertTrue;
 public class ProofMessagesTest
 {
 	@Test
-	public void staysQuietBeforeStartAndOnALockedRow()
+	public void noLine()
 	{
 		assertNull(ProofMessages.line("event has not started"));
 		assertNull(ProofMessages.line("row is locked"));
@@ -19,13 +19,13 @@ public class ProofMessagesTest
 	}
 
 	@Test
-	public void namesAFinishedTile()
+	public void finishedTile()
 	{
 		assertEquals(ProofMessages.TILE_COMPLETE, ProofMessages.line("tile complete"));
 	}
 
 	@Test
-	public void asksForAManualSubmit()
+	public void manualSubmit()
 	{
 		String[] errors = {
 			"invalid tiles",
@@ -51,13 +51,13 @@ public class ProofMessagesTest
 	}
 
 	@Test
-	public void namesRateLimit()
+	public void rateLimit()
 	{
 		assertEquals(ProofMessages.RATE_LIMITED, ProofMessages.line("rate limited"));
 	}
 
 	@Test
-	public void endsTheSessionOnceTheEventIsOver()
+	public void eventOver()
 	{
 		assertTrue(ProofMessages.endsEvent("event has ended", false));
 		assertTrue(ProofMessages.endsEvent("unauthorized", true));

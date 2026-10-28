@@ -114,12 +114,12 @@ final class EventBoardClient
 				}
 			}
 			tile.complete = complete;
-			tile.partial = !complete && approvedOn(tile);
+			tile.partial = !complete && hasApproved(tile);
 			return;
 		}
 	}
 
-	private static boolean approvedOn(EventTile tile)
+	private static boolean hasApproved(EventTile tile)
 	{
 		if (tile.items == null)
 		{
@@ -435,7 +435,7 @@ final class EventBoardClient
 			{
 				if (running && ticket == generation.get())
 				{
-					panel.closeNotOnTeam();
+					panel.notOnTeam();
 				}
 			});
 			return;

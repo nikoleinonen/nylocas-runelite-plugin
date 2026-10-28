@@ -9,7 +9,7 @@ import static org.junit.Assert.assertEquals;
 public class LoginTextTest
 {
 	@Test
-	public void writesLoginLinesInRed()
+	public void loginLines()
 	{
 		assertEquals(ColorUtil.wrapWithColorTag("Connected to Nylocas event Summer Bingo as Blue", Color.RED), LoginText.connected("Summer Bingo", "Blue"));
 		assertEquals(ColorUtil.wrapWithColorTag("Fetched Nylocas event Summer Bingo as Blue", Color.RED), LoginText.fetched("Summer Bingo", "Blue"));
@@ -23,7 +23,7 @@ public class LoginTextTest
 	}
 
 	@Test
-	public void stripsTagsFromNames()
+	public void stripsTags()
 	{
 		assertEquals(
 			ColorUtil.wrapWithColorTag("Connected to Nylocas event Summer Bingo as Blue", Color.RED),

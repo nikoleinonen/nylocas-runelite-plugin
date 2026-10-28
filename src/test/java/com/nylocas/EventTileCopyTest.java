@@ -9,7 +9,7 @@ import static org.junit.Assert.assertNotSame;
 public class EventTileCopyTest
 {
 	@Test
-	public void reservationDoesNotChangeTheFetchedTile()
+	public void copyTiles()
 	{
 		EventItem item = new EventItem();
 		item.key = "crystal_weapon_seed";

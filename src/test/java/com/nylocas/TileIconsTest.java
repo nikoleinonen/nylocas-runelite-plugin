@@ -12,7 +12,7 @@ import static org.junit.Assert.assertTrue;
 public class TileIconsTest
 {
 	@Test
-	public void usesTheCatalogIconWhenTheTileHasNoImage()
+	public void catalogIcon()
 	{
 		EventTile tile = tile();
 		tile.iconItem = "Twisted Bow";
@@ -25,7 +25,7 @@ public class TileIconsTest
 	}
 
 	@Test
-	public void usesTheFirstItemWhenTheIconIsEmpty()
+	public void firstItem()
 	{
 		EventTile tile = tile();
 		tile.items = List.of(item("crystal_weapon_seed", 4207));
@@ -35,7 +35,7 @@ public class TileIconsTest
 	}
 
 	@Test
-	public void usesTheChosenIconAndFallsBackToTheFirstDrop()
+	public void chosenIcon()
 	{
 		EventTile tile = tile();
 		tile.iconItem = "tzrek-jad";
@@ -46,7 +46,7 @@ public class TileIconsTest
 	}
 
 	@Test
-	public void coversACustomTileImage()
+	public void tileImage()
 	{
 		EventTile tile = tile();
 		tile.imageUrl = "https://media.nylocas.com/tiles/abc_DEF-123.png";
@@ -61,7 +61,7 @@ public class TileIconsTest
 	}
 
 	@Test
-	public void centersACustomIconAndKeepsTheCount()
+	public void customIcon()
 	{
 		EventTile tile = tile();
 		tile.imageUrl = "https://media.nylocas.com/tiles/abc.gif";
@@ -77,7 +77,7 @@ public class TileIconsTest
 	}
 
 	@Test
-	public void rejectsImagesOutsideTheCdn()
+	public void imageUrl()
 	{
 		EventTile tile = tile();
 		tile.imageUrl = "https://example.com/tiles/abc.png";
@@ -93,7 +93,7 @@ public class TileIconsTest
 	}
 
 	@Test
-	public void formatsTheSameCountsAsTheSite()
+	public void countFormat()
 	{
 		assertEquals("99999", TileIcons.formatCount(99_999));
 		assertEquals("100K", TileIcons.formatCount(100_000));
@@ -104,7 +104,7 @@ public class TileIconsTest
 	}
 
 	@Test
-	public void tilesAreFourWideByThreeTall()
+	public void cellHeight()
 	{
 		assertEquals(27, EventPanel.cellHeight(36));
 		assertEquals(3, EventPanel.cellHeight(4));

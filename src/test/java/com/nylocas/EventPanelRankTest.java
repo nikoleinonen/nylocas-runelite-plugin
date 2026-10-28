@@ -19,7 +19,7 @@ public class EventPanelRankTest
 	}
 
 	@Test
-	public void separatesAnEndedEventFromAnUnknownKey()
+	public void fetchStatus()
 	{
 		assertEquals("The event has ended", EventPanel.fetchStatus("event has ended"));
 		assertEquals("No event found for the provided team key", EventPanel.fetchStatus("unauthorized"));

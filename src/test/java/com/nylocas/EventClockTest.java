@@ -20,7 +20,7 @@ public class EventClockTest
 	}
 
 	@Test
-	public void windowIsStartInclusiveAndEndExclusive()
+	public void eventWindow()
 	{
 		Instant starts = Instant.parse("2026-11-01T12:00:00Z");
 		Instant ends = Instant.parse("2026-11-01T18:00:00Z");

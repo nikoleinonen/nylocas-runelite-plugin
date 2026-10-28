@@ -8,14 +8,14 @@ import static org.junit.Assert.assertEquals;
 public class ScreenshotFilesTest
 {
 	@Test
-	public void eventNameIsTheFolder()
+	public void folderName()
 	{
 		assertEquals("Autumn Bingo 7", ScreenshotFiles.folderName("Autumn Bingo 7"));
 		assertEquals("2026-10-13_21-07-12_000 Crystal weapon seed.png", ScreenshotFiles.fileName("2026-10-13_21-07-12_000", List.of("Crystal weapon seed")));
 	}
 
 	@Test
-	public void folderNameDropsCharactersAPathCannotUse()
+	public void pathCharacters()
 	{
 		assertEquals("Autumn Bingo 7", ScreenshotFiles.folderName("Autumn: Bingo 7"));
 		assertEquals("event", ScreenshotFiles.folderName("   "));
