@@ -22,8 +22,8 @@ public class EventPanelRankTest
 	public void fetchStatus()
 	{
 		assertEquals("The event has ended", EventPanel.fetchStatus("event has ended"));
-		assertEquals("No event found for the provided team key", EventPanel.fetchStatus("unauthorized"));
-		assertEquals("No event found for the provided team key", EventPanel.fetchStatus("not found"));
+		assertEquals("Invalid team key", EventPanel.fetchStatus("unauthorized"));
+		assertEquals("Invalid team key", EventPanel.fetchStatus("not found"));
 		assertEquals("Could not fetch event", EventPanel.fetchStatus("Could not fetch event"));
 	}
 }

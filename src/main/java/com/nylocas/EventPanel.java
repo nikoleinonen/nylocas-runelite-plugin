@@ -71,7 +71,7 @@ final class EventPanel extends PluginPanel
 	private static final String WEBSITE_URL = "https://nylocas.com/";
 	private static final String KEY_HINT = "Set team key in config";
 	private static final String EVENT_ENDED = "The event has ended";
-	private static final String EVENT_NOT_FOUND = "No event found for the provided team key";
+	private static final String INVALID_KEY = "Invalid team key";
 
 	private final NylocasPlugin plugin;
 	private final JButton sessionButton = new JButton("Connect");
@@ -469,7 +469,7 @@ final class EventPanel extends PluginPanel
 		}
 		if ("unauthorized".equals(error) || "not found".equals(error))
 		{
-			return EVENT_NOT_FOUND;
+			return INVALID_KEY;
 		}
 		return error;
 	}
