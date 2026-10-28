@@ -659,7 +659,7 @@ public class NylocasPlugin extends Plugin
 			boolean complete = Boolean.TRUE.equals(frame.complete);
 			if (frame.approval && config.receiveOwn())
 			{
-				chat(WebsocketText.approved(approvalTemplate(true, complete), teamName(), tileTitle(frame.tileId), accentColor(true), config.tileColor()));
+				chat(WebsocketText.approved(approvalTemplate(complete), teamName(), tileTitle(frame.tileId), accentColor(true), config.tileColor()));
 			}
 			else if ("reject".equals(frame.action) || "delete".equals(frame.action))
 			{
@@ -687,7 +687,7 @@ public class NylocasPlugin extends Plugin
 		{
 			String team = frame.teamName == null ? "" : frame.teamName;
 			boolean complete = Boolean.TRUE.equals(frame.complete);
-			chat(WebsocketText.approved(approvalTemplate(false, complete), team, enemyTileTitle(frame), accentColor(false), config.tileColor()));
+			chat(WebsocketText.approved(approvalTemplate(complete), team, enemyTileTitle(frame), accentColor(false), config.tileColor()));
 			return;
 		}
 		if ("dropped".equals(frame.type))
@@ -702,7 +702,7 @@ public class NylocasPlugin extends Plugin
 			{
 				return;
 			}
-			chat(WebsocketText.teamEventDrop(own ? config.teammateDropMessage() : config.enemyDropMessage(), team, itemLabel(frame), enemyTileTitle(frame), accentColor(own), config.dropColor(), config.tileColor()));
+			chat(WebsocketText.teamEventDrop(WebsocketText.TEAM_DROP, team, itemLabel(frame), enemyTileTitle(frame), accentColor(own), config.dropColor(), config.tileColor()));
 			return;
 		}
 		if ("rejected".equals(frame.type) || "deleted".equals(frame.type))
@@ -741,44 +741,40 @@ public class NylocasPlugin extends Plugin
 		Color teamColor = accentColor(own);
 		if (own ? "reject".equals(frame.action) : "rejected".equals(frame.type))
 		{
-			chat(WebsocketText.rejected(rejectionTemplate(own, frame.rejectionReason), team, tile, frame.rejectionReason, teamColor, config.tileColor(), config.rejectionColor()));
+			chat(WebsocketText.rejected(rejectionTemplate(frame.rejectionReason), team, tile, frame.rejectionReason, teamColor, config.tileColor(), config.rejectionColor()));
 			return;
 		}
 		if (own ? "delete".equals(frame.action) : "deleted".equals(frame.type))
 		{
-			chat(WebsocketText.deleted(own ? config.ownDeletedMessage() : config.enemyDeletedMessage(), team, tile, teamColor, config.tileColor()));
+			chat(WebsocketText.deleted(WebsocketText.DELETED, team, tile, teamColor, config.tileColor()));
 		}
 	}
 
-	private String approvalTemplate(boolean own, boolean complete)
+	private String approvalTemplate(boolean complete)
 	{
-		if (own)
-		{
-			return complete ? config.ownApprovedCompleteMessage() : config.ownApprovedMessage();
-		}
-		return complete ? config.enemyApprovedCompleteMessage() : config.enemyApprovedMessage();
+		return complete ? WebsocketText.APPROVED_COMPLETE : WebsocketText.APPROVED;
 	}
 
 	private String rankTemplate(String leader, boolean winner)
 	{
 		if (leader == null || leader.isEmpty())
 		{
-			return config.rankTieMessage();
+			return WebsocketText.RANK_TIE;
 		}
 		if (winner)
 		{
-			return config.rankWinMessage();
+			return WebsocketText.RANK_WIN;
 		}
-		return config.rankLeadMessage();
+		return WebsocketText.RANK_LEAD;
 	}
 
-	private String rejectionTemplate(boolean own, String reason)
+	private String rejectionTemplate(String reason)
 	{
 		if (reason == null || Text.removeTags(reason).isEmpty())
 		{
-			return own ? config.ownRejectedMessage() : config.enemyRejectedMessage();
+			return WebsocketText.REJECTED;
 		}
-		return own ? config.ownRejectedReasonMessage() : config.enemyRejectedReasonMessage();
+		return WebsocketText.REJECTED_REASON;
 	}
 
 	private String enemyTileTitle(EventWebsocket.Frame frame)
@@ -984,7 +980,7 @@ public class NylocasPlugin extends Plugin
 			for (AllowedDrops.ProofTarget target : submitted)
 			{
 				String dropName = target.itemName == null ? "" : target.itemName;
-				chat(WebsocketText.eventDrop(config.ownDropSubmittedMessage(), dropName, TileText.tileTitle(target.tile), teamName(), config.ownTeamColor(), config.dropColor(), config.tileColor()));
+				chat(WebsocketText.eventDrop(WebsocketText.OWN_DROP_SUBMITTED, dropName, TileText.tileTitle(target.tile), teamName(), config.ownTeamColor(), config.dropColor(), config.tileColor()));
 			}
 			return;
 		}
@@ -995,7 +991,7 @@ public class NylocasPlugin extends Plugin
 			{
 				continue;
 			}
-			chat(WebsocketText.eventDrop(config.ownDropMessage(), itemLabel(stack.getId()), TileText.tileTitle(target.tile), teamName(), config.ownTeamColor(), config.dropColor(), config.tileColor()));
+			chat(WebsocketText.eventDrop(WebsocketText.OWN_DROP, itemLabel(stack.getId()), TileText.tileTitle(target.tile), teamName(), config.ownTeamColor(), config.dropColor(), config.tileColor()));
 		}
 	}
 
