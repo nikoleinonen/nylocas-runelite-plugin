@@ -27,7 +27,7 @@ public class WebsocketFramesTest
 		frame.tileId = 4;
 		frames(config, lines, id -> false).onFrame(frame);
 		assertEquals(
-			List.of(WebsocketText.approved(WebsocketText.APPROVED, "", "", config.ownTeamColor(), config.tileColor())),
+			List.of(NotificationText.approved(NotificationText.APPROVED, "", "", config.ownTeamColor(), config.tileColor())),
 			lines);
 	}
 
@@ -73,7 +73,7 @@ public class WebsocketFramesTest
 		frame.title = "Bandos";
 		frames(config, lines, id -> false).onFrame(frame);
 		assertEquals(
-			List.of(WebsocketText.teamEventDrop(WebsocketText.TEAM_DROP, "Red", "Bandos hilt", "Bandos", config.enemyTeamColor(), config.dropColor(), config.tileColor())),
+			List.of(NotificationText.drop(NotificationText.TEAM_DROP, "Red", "Bandos hilt", "Bandos", config.enemyTeamColor(), config.dropColor(), config.tileColor())),
 			lines);
 	}
 

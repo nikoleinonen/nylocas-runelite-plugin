@@ -729,11 +729,11 @@ public class NylocasPlugin extends Plugin
 		if (!board.beforeStart() && config.eventDrop())
 		{
 			List<TileMatch.ProofTarget> chatTargets = uploadProofs ? targets : dropsOf(matched);
-			String template = uploadProofs ? WebsocketText.OWN_DROP_SUBMITTED : WebsocketText.OWN_DROP;
+			String template = uploadProofs ? NotificationText.OWN_DROP_SUBMITTED : NotificationText.OWN_DROP;
 			for (TileMatch.ProofTarget target : chatTargets)
 			{
 				String dropName = target.itemName == null ? "" : target.itemName;
-				chat(WebsocketText.eventDrop(template, dropName, TileText.tileTitle(target.tile), teamName(), config.ownTeamColor(), config.dropColor(), config.tileColor()));
+				chat(NotificationText.drop(template, teamName(), dropName, TileText.tileTitle(target.tile), config.ownTeamColor(), config.dropColor(), config.tileColor()));
 			}
 		}
 		if (live && !proofKey.isEmpty() && proofPlayerId != 0)

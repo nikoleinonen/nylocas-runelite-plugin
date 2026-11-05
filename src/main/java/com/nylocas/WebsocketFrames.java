@@ -37,7 +37,7 @@ final class WebsocketFrames
 			boolean complete = Boolean.TRUE.equals(frame.complete);
 			if (frame.approval && config.receiveOwn())
 			{
-				chat.accept(WebsocketText.approved(approvalTemplate(complete), teamName(), tileTitle(frame.tileId), accentColor(true), config.tileColor()));
+				chat.accept(NotificationText.approved(approvalTemplate(complete), teamName(), tileTitle(frame.tileId), accentColor(true), config.tileColor()));
 			}
 			else if ("reject".equals(frame.action) || "delete".equals(frame.action))
 			{
@@ -66,7 +66,7 @@ final class WebsocketFrames
 		{
 			String team = frame.teamName == null ? "" : frame.teamName;
 			boolean complete = Boolean.TRUE.equals(frame.complete);
-			chat.accept(WebsocketText.approved(approvalTemplate(complete), team, enemyTileTitle(frame), accentColor(false), config.tileColor()));
+			chat.accept(NotificationText.approved(approvalTemplate(complete), team, enemyTileTitle(frame), accentColor(false), config.tileColor()));
 			return;
 		}
 		if ("dropped".equals(frame.type))
@@ -81,7 +81,7 @@ final class WebsocketFrames
 			{
 				return;
 			}
-			chat.accept(WebsocketText.teamEventDrop(WebsocketText.TEAM_DROP, team, itemLabel(frame), enemyTileTitle(frame), accentColor(own), config.dropColor(), config.tileColor()));
+			chat.accept(NotificationText.drop(NotificationText.TEAM_DROP, team, itemLabel(frame), enemyTileTitle(frame), accentColor(own), config.dropColor(), config.tileColor()));
 			return;
 		}
 		if ("rejected".equals(frame.type) || "deleted".equals(frame.type))
@@ -103,7 +103,7 @@ final class WebsocketFrames
 			if (config.receiveRank())
 			{
 				boolean winner = Boolean.TRUE.equals(frame.winner);
-				chat.accept(WebsocketText.rank(rankTemplate(frame.leader, winner), frame.leader, accentColor(ownLeader(frame.leader))));
+				chat.accept(NotificationText.rank(rankTemplate(frame.leader, winner), frame.leader, accentColor(ownLeader(frame.leader))));
 			}
 			EventPanel current = panel.get();
 			if (current != null)
@@ -120,40 +120,40 @@ final class WebsocketFrames
 		Color teamColor = accentColor(own);
 		if (own ? "reject".equals(frame.action) : "rejected".equals(frame.type))
 		{
-			chat.accept(WebsocketText.rejected(rejectionTemplate(frame.rejectionReason), team, tile, frame.rejectionReason, teamColor, config.tileColor(), config.rejectionColor()));
+			chat.accept(NotificationText.rejected(rejectionTemplate(frame.rejectionReason), team, tile, frame.rejectionReason, teamColor, config.tileColor(), config.rejectionColor()));
 			return;
 		}
 		if (own ? "delete".equals(frame.action) : "deleted".equals(frame.type))
 		{
-			chat.accept(WebsocketText.deleted(WebsocketText.DELETED, team, tile, teamColor, config.tileColor()));
+			chat.accept(NotificationText.deleted(NotificationText.DELETED, team, tile, teamColor, config.tileColor()));
 		}
 	}
 
 	private String approvalTemplate(boolean complete)
 	{
-		return complete ? WebsocketText.APPROVED_COMPLETE : WebsocketText.APPROVED;
+		return complete ? NotificationText.APPROVED_COMPLETE : NotificationText.APPROVED;
 	}
 
 	private String rankTemplate(String leader, boolean winner)
 	{
 		if (leader == null || leader.isEmpty())
 		{
-			return WebsocketText.RANK_TIE;
+			return NotificationText.RANK_TIE;
 		}
 		if (winner)
 		{
-			return WebsocketText.RANK_WIN;
+			return NotificationText.RANK_WIN;
 		}
-		return WebsocketText.RANK_LEAD;
+		return NotificationText.RANK_LEAD;
 	}
 
 	private String rejectionTemplate(String reason)
 	{
 		if (reason == null || Text.removeTags(reason).isEmpty())
 		{
-			return WebsocketText.REJECTED;
+			return NotificationText.REJECTED;
 		}
-		return WebsocketText.REJECTED_REASON;
+		return NotificationText.REJECTED_REASON;
 	}
 
 	private String enemyTileTitle(EventWebsocket.Frame frame)

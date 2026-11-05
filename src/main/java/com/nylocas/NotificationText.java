@@ -4,7 +4,7 @@ import java.awt.Color;
 import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
 
-final class WebsocketText
+final class NotificationText
 {
 	static final String OWN_DROP = "You got: {drop} for {tile}";
 	static final String OWN_DROP_SUBMITTED = "You got: {drop} for {tile}, auto submitted";
@@ -18,16 +18,11 @@ final class WebsocketText
 	static final String RANK_WIN = "{team} won the event! Congratulations!";
 	static final String RANK_TIE = "First place is tied.";
 
-	private WebsocketText()
+	private NotificationText()
 	{
 	}
 
-	static String eventDrop(String template, String dropName, String tileName, String teamName, Color teamColor, Color dropColor, Color tileColor)
-	{
-		return format(template, teamName, dropName, tileName, "", teamColor, dropColor, tileColor, null);
-	}
-
-	static String teamEventDrop(String template, String teamName, String dropName, String tileName, Color teamColor, Color dropColor, Color tileColor)
+	static String drop(String template, String teamName, String dropName, String tileName, Color teamColor, Color dropColor, Color tileColor)
 	{
 		return format(template, teamName, dropName, tileName, "", teamColor, dropColor, tileColor, null);
 	}
