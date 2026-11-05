@@ -41,9 +41,13 @@ import okhttp3.Response;
 final class ProofCapture
 {
 	private static final DateTimeFormatter SHOT_STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss_SSS").withZone(ZoneId.systemDefault());
+	// Game-chat tab written to VarClientID.CHAT_VIEW. The API names the varc, not this value.
 	private static final int CHAT_VIEW_GAME = 1;
+	// proc,redraw_chat_buttons. Not exported by ScriptID or gameval.
 	private static final int REDRAW_CHAT_BUTTONS = 178;
+	// proc,chat_alert_set. Not exported by ScriptID or gameval.
 	private static final int CHAT_ALERT_SET = 183;
+	// proc,toplevel_chatbox_background. Not exported by ScriptID or gameval.
 	private static final int TOPLEVEL_CHATBOX_BACKGROUND = 923;
 
 	private final Client client;
