@@ -13,6 +13,17 @@ public class NylocasUrlsTest
 	}
 
 	@Test
+	public void apiUrls()
+	{
+		String hash = NylocasUrls.hashKey("abc");
+		assertEquals(NylocasUrls.API + "/plugin/event/" + hash, NylocasUrls.pluginEvent("abc"));
+		assertEquals(NylocasUrls.API + "/plugin/event/" + hash + "?open_row=2", NylocasUrls.pluginEvent("abc", 2));
+		assertEquals(NylocasUrls.API + "/plugin/drop", NylocasUrls.pluginDrop());
+		assertEquals(NylocasUrls.API + "/plugin/submission", NylocasUrls.pluginSubmission());
+		assertEquals(NylocasUrls.ITEM_ICONS + "twisted_bow.png", NylocasUrls.itemIcon("twisted_bow"));
+	}
+
+	@Test
 	public void websocketUrl()
 	{
 		assertEquals(

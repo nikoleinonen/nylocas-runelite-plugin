@@ -172,7 +172,7 @@ final class EventBoardClient
 		}
 		int ticket = generation.get();
 		Request request = new Request.Builder()
-			.url(NylocasUrls.API + "/plugin/event/" + NylocasUrls.hashKey(key) + "?open_row=" + openRow)
+			.url(NylocasUrls.pluginEvent(key, openRow))
 			.header("Accept", "application/json")
 			.build();
 		okHttpClient.newCall(request).enqueue(new Callback()
@@ -336,7 +336,7 @@ final class EventBoardClient
 			fetchCall.cancel();
 		}
 		Request request = new Request.Builder()
-			.url(NylocasUrls.API + "/plugin/event/" + NylocasUrls.hashKey(key))
+			.url(NylocasUrls.pluginEvent(key))
 			.header("Accept", "application/json")
 			.build();
 		fetchCall = okHttpClient.newCall(request);

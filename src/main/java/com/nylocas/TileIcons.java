@@ -26,8 +26,8 @@ final class TileIcons
 
 	private static final Pattern QUOTES = Pattern.compile("['\u2019\u2018`\u00B4]");
 	private static final Pattern ITEM_KEY = Pattern.compile("[a-z0-9][a-z0-9_-]{0,63}");
-	private static final Pattern ITEM_ICON = Pattern.compile("https://cdn\\.nylocas\\.com/resources/icons/items/[a-z0-9][a-z0-9_-]{0,63}\\.png");
-	private static final Pattern TILE_IMAGE = Pattern.compile("https://media\\.nylocas\\.com/tiles/[A-Za-z0-9_-]+\\.(?:png|gif|jpg|webp)");
+	private static final Pattern ITEM_ICON = Pattern.compile(Pattern.quote(NylocasUrls.ITEM_ICONS) + "[a-z0-9][a-z0-9_-]{0,63}\\.png");
+	private static final Pattern TILE_IMAGE = Pattern.compile(Pattern.quote(NylocasUrls.TILE_IMAGES) + "[A-Za-z0-9_-]+\\.(?:png|gif|jpg|webp)");
 
 	private TileIcons()
 	{
@@ -141,7 +141,7 @@ final class TileIcons
 		{
 			return null;
 		}
-		return "https://cdn.nylocas.com/resources/icons/items/" + normalized + ".png";
+		return NylocasUrls.itemIcon(normalized);
 	}
 
 	private static String iconKey(EventTile tile)

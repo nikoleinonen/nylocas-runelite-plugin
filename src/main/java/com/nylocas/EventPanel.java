@@ -67,8 +67,6 @@ final class EventPanel extends PluginPanel
 	private static final int COOLDOWN_MS = 2_000; // TODO: PUT TO 60_000 WHEN READY FOR PLUGIN HUB!
 	private static final int LINK_ICON = 16;
 	private static final String ICON_STYLE = "border: 3,0,3,0,#0000";
-	private static final String DISCORD_URL = "https://discord.gg/3T23DAehU5";
-	private static final String GITHUB_URL = "https://github.com/nikoleinonen/nylocas-runelite-plugin";
 	private static final String KEY_HINT = "Set team key in config";
 	private static final String EVENT_ENDED = "The event has ended";
 	private static final String INVALID_KEY = "Invalid team key";
@@ -134,8 +132,8 @@ final class EventPanel extends PluginPanel
 		buttons.setOpaque(false);
 		buttons.setBorder(new EmptyBorder(4, 0, 4, 0));
 		buttons.add(linkCell("website.png", "Website", () -> websiteUrl));
-		buttons.add(linkCell("discord.png", "Discord", () -> DISCORD_URL));
-		buttons.add(linkCell("github.png", "GitHub", () -> GITHUB_URL));
+		buttons.add(linkCell("discord.png", "Discord", () -> NylocasUrls.DISCORD));
+		buttons.add(linkCell("github.png", "GitHub", () -> NylocasUrls.GITHUB));
 
 		JPanel titleRow = new JPanel(new BorderLayout());
 		titleRow.setBackground(HEADER_COLOR);

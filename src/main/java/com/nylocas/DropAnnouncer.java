@@ -53,7 +53,7 @@ final class DropAnnouncer
 		body.source = target.sourceId;
 		body.id = id;
 		Request call = new Request.Builder()
-			.url(NylocasUrls.API + "/plugin/drop")
+			.url(NylocasUrls.pluginDrop())
 			.header("Authorization", "Bearer " + key)
 			.post(RequestBody.create(JSON, gson.toJson(body)))
 			.build();

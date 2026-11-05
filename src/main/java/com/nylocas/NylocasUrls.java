@@ -9,6 +9,12 @@ final class NylocasUrls
 	static final String API = "http://127.0.0.1:8080";
 	static final String WEBSOCKET = "ws://127.0.0.1:8090";
 	static final String WEBSITE = "http://127.0.0.1:5777";
+	static final String CDN = "https://cdn.nylocas.com";
+	static final String MEDIA = "https://media.nylocas.com";
+	static final String DISCORD = "https://discord.gg/3T23DAehU5";
+	static final String GITHUB = "https://github.com/nikoleinonen/nylocas-runelite-plugin";
+	static final String ITEM_ICONS = CDN + "/resources/icons/items/";
+	static final String TILE_IMAGES = MEDIA + "/tiles/";
 
 	private NylocasUrls()
 	{
@@ -32,6 +38,31 @@ final class NylocasUrls
 		{
 			throw new IllegalStateException(ex);
 		}
+	}
+
+	static String pluginEvent(String key)
+	{
+		return API + "/plugin/event/" + hashKey(key);
+	}
+
+	static String pluginEvent(String key, int openRow)
+	{
+		return pluginEvent(key) + "?open_row=" + openRow;
+	}
+
+	static String pluginDrop()
+	{
+		return API + "/plugin/drop";
+	}
+
+	static String pluginSubmission()
+	{
+		return API + "/plugin/submission";
+	}
+
+	static String itemIcon(String key)
+	{
+		return ITEM_ICONS + key + ".png";
 	}
 
 	static String websocket(String keyHash, boolean rank, boolean own, boolean enemy, boolean enemyReject, boolean enemyDrop)
