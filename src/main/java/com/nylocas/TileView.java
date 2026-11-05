@@ -8,14 +8,14 @@ import java.awt.RenderingHints;
 import javax.swing.JComponent;
 import net.runelite.client.util.AsyncBufferedImage;
 
-final class TileFace extends JComponent
+final class TileView extends JComponent
 {
 	private Image image;
 	private boolean cover;
 	private boolean sharp;
 	private Integer count;
 
-	TileFace()
+	TileView()
 	{
 		setOpaque(false);
 	}

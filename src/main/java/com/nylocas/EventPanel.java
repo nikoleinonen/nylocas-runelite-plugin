@@ -743,10 +743,10 @@ final class EventPanel extends PluginPanel
 		cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		String tip = tileTooltip(tile);
 		cell.setToolTipText(tip);
-		TileFace face = new TileFace();
-		face.show(tileImages.get(tile.id));
-		face.setToolTipText(tip);
-		cell.add(face);
+		TileView view = new TileView();
+		view.show(tileImages.get(tile.id));
+		view.setToolTipText(tip);
+		cell.add(view);
 		cells.put(cell, tile);
 		MouseAdapter select = new MouseAdapter()
 		{
@@ -757,7 +757,7 @@ final class EventPanel extends PluginPanel
 			}
 		};
 		cell.addMouseListener(select);
-		face.addMouseListener(select);
+		view.addMouseListener(select);
 		return cell;
 	}
 
@@ -1377,9 +1377,9 @@ final class EventPanel extends PluginPanel
 			String tip = tileTooltip(tile);
 			cell.setBackground(tileColor(tile));
 			cell.setToolTipText(tip);
-			if (cell.getComponentCount() == 1 && cell.getComponent(0) instanceof TileFace)
+			if (cell.getComponentCount() == 1 && cell.getComponent(0) instanceof TileView)
 			{
-				((TileFace) cell.getComponent(0)).setToolTipText(tip);
+				((TileView) cell.getComponent(0)).setToolTipText(tip);
 			}
 			if (cell == selectedCell)
 			{
