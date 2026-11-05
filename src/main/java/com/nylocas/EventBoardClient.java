@@ -235,8 +235,8 @@ final class EventBoardClient
 		eventCode = codeOf(board);
 		discordWebhookUrl = webhookOf(board);
 		eventStarted = board != null && board.eventStarted;
-		startsAt = EventClock.parse(board == null ? null : board.startsAt);
-		endsAt = EventClock.parse(board == null ? null : board.endsAt);
+		startsAt = EventTime.parse(board == null ? null : board.startsAt);
+		endsAt = EventTime.parse(board == null ? null : board.endsAt);
 		eventLoaded = true;
 		if (!running || ticket != generation.get())
 		{
@@ -303,12 +303,12 @@ final class EventBoardClient
 
 	boolean beforeStart()
 	{
-		return EventClock.beforeStart(startsAt, Instant.now());
+		return EventTime.beforeStart(startsAt, Instant.now());
 	}
 
 	boolean afterEnd()
 	{
-		return EventClock.afterEnd(endsAt, Instant.now());
+		return EventTime.afterEnd(endsAt, Instant.now());
 	}
 
 	String itemName(int id)

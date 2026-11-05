@@ -2,9 +2,9 @@ package com.nylocas;
 
 import java.time.Instant;
 
-final class EventClock
+final class EventTime
 {
-	private EventClock()
+	private EventTime()
 	{
 	}
 

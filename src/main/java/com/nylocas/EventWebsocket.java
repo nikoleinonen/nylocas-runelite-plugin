@@ -75,8 +75,8 @@ final class EventWebsocket
 		this.stopped = false;
 		this.step = 0;
 		this.key = teamKey;
-		this.startsAt = EventClock.parse(startsAt);
-		this.endsAt = EventClock.parse(endsAt);
+		this.startsAt = EventTime.parse(startsAt);
+		this.endsAt = EventTime.parse(endsAt);
 		if (this.endsAt == null || !Instant.now().isBefore(this.endsAt))
 		{
 			if (this.endsAt != null)
@@ -154,9 +154,9 @@ final class EventWebsocket
 		{
 			return;
 		}
-		if (endsAt == null || EventClock.afterEnd(endsAt, Instant.now()))
+		if (endsAt == null || EventTime.afterEnd(endsAt, Instant.now()))
 		{
-			finish(EventClock.afterEnd(endsAt, Instant.now()));
+			finish(EventTime.afterEnd(endsAt, Instant.now()));
 			return;
 		}
 		if (startsAt != null && Instant.now().isBefore(startsAt))
@@ -175,9 +175,9 @@ final class EventWebsocket
 
 	private void connectNow()
 	{
-		if (stopped || endsAt == null || EventClock.afterEnd(endsAt, Instant.now()))
+		if (stopped || endsAt == null || EventTime.afterEnd(endsAt, Instant.now()))
 		{
-			finish(!stopped && EventClock.afterEnd(endsAt, Instant.now()));
+			finish(!stopped && EventTime.afterEnd(endsAt, Instant.now()));
 			return;
 		}
 		int ticket;
@@ -247,7 +247,7 @@ final class EventWebsocket
 				}
 				if (code == 1000)
 				{
-					finish(EventClock.afterEnd(endsAt, Instant.now()));
+					finish(EventTime.afterEnd(endsAt, Instant.now()));
 					return;
 				}
 				reconnect(0);

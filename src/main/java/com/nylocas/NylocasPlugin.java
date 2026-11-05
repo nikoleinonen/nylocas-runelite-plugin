@@ -569,7 +569,7 @@ public class NylocasPlugin extends Plugin
 	private void scheduleEventEnd(String endsAt, int ticket)
 	{
 		cancelEventEnd();
-		Instant end = EventClock.parse(endsAt);
+		Instant end = EventTime.parse(endsAt);
 		if (end == null)
 		{
 			return;
