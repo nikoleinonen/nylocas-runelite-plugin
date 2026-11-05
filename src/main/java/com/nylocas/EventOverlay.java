@@ -14,7 +14,7 @@ import net.runelite.client.ui.overlay.components.LineComponent;
 import static net.runelite.api.MenuAction.RUNELITE_OVERLAY_CONFIG;
 import static net.runelite.client.ui.overlay.OverlayManager.OPTION_CONFIGURE;
 
-final class EventCodeOverlay extends OverlayPanel
+final class EventOverlay extends OverlayPanel
 {
 	private static final String STARTS_IN = "The event starts in: ";
 	private static final String REFRESH = "Refresh the event to get the code";
@@ -23,7 +23,7 @@ final class EventCodeOverlay extends OverlayPanel
 	private final NylocasConfig config;
 	private final NylocasPlugin plugin;
 
-	EventCodeOverlay(NylocasConfig config, NylocasPlugin plugin)
+	EventOverlay(NylocasConfig config, NylocasPlugin plugin)
 	{
 		this.config = config;
 		this.plugin = plugin;

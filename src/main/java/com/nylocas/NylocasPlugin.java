@@ -80,7 +80,7 @@ public class NylocasPlugin extends Plugin
 	private ScheduledExecutorService executor;
 
 	private NavigationButton navButton;
-	private EventCodeOverlay overlay;
+	private EventOverlay overlay;
 	private volatile EventPanel panel;
 	private volatile boolean running;
 	private EventBoardClient board;
@@ -121,7 +121,7 @@ public class NylocasPlugin extends Plugin
 		proofs = new ProofCapture(client, clientThread, drawManager, executor, okHttpClient, gson, this::sessionId, this::eventAfterEnd, this::onProofEventEnded);
 		board.start();
 		proofs.start();
-		overlay = new EventCodeOverlay(config, this);
+		overlay = new EventOverlay(config, this);
 		overlayManager.add(overlay);
 		BufferedImage icon = ImageUtil.loadImageResource(getClass(), "sidebar.png");
 		panel = new EventPanel(this);
