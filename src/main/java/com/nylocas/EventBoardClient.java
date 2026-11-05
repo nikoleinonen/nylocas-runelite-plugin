@@ -387,7 +387,7 @@ final class EventBoardClient
 		{
 			return;
 		}
-		if (AllowedDrops.playerId(board == null ? null : board.players, loggedInName.get()) == 0)
+		if (EventPlayer.playerId(board == null ? null : board.players, loggedInName.get()) == 0)
 		{
 			SwingUtilities.invokeLater(() ->
 			{

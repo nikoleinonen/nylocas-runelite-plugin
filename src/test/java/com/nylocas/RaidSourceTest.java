@@ -42,8 +42,8 @@ public class RaidSourceTest
 		challenge.id = 2;
 		String source = RaidSource.resolve("Chambers of Xeric", "Chambers of Xeric Challenge Mode");
 
-		assertNull(AllowedDrops.firstProof(List.of(normal), source, 20997));
-		assertEquals(2, AllowedDrops.firstProof(List.of(challenge), source, 20997).tile.id);
+		assertNull(TileMatch.firstProof(List.of(normal), source, 20997));
+		assertEquals(2, TileMatch.firstProof(List.of(challenge), source, 20997).tile.id);
 	}
 
 	@Test
@@ -53,7 +53,7 @@ public class RaidSourceTest
 		EventTile expert = raidTile("Tombs of Amascut: Expert Mode");
 		String source = RaidSource.resolve("Tombs of Amascut", "Tombs of Amascut: Entry Mode");
 
-		assertNull(AllowedDrops.firstProof(List.of(normal, expert), source, 27277));
+		assertNull(TileMatch.firstProof(List.of(normal, expert), source, 27277));
 	}
 
 	private static EventTile raidTile(String lootName)

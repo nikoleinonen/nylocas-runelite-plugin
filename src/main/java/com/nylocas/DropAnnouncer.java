@@ -38,7 +38,7 @@ final class DropAnnouncer
 		this.ids = ids;
 	}
 
-	long announce(AllowedDrops.ProofTarget target, long playerId, String key)
+	long announce(TileMatch.ProofTarget target, long playerId, String key)
 	{
 		if (target == null || target.tile == null || target.item == null || target.item.key == null || target.item.key.isEmpty() || target.sourceId == null || target.sourceId.isEmpty())
 		{

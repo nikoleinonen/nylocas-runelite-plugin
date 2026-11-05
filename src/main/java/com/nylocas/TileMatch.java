@@ -3,12 +3,10 @@ package com.nylocas;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
-import net.runelite.client.util.Text;
 
-final class AllowedDrops
+final class TileMatch
 {
-	private AllowedDrops()
+	private TileMatch()
 	{
 	}
 
@@ -59,23 +57,6 @@ final class AllowedDrops
 			}
 		}
 		return null;
-	}
-
-	static long playerId(List<EventPlayer> players, String name)
-	{
-		String key = playerKey(name);
-		if (key.isEmpty() || players == null)
-		{
-			return 0;
-		}
-		for (EventPlayer player : players)
-		{
-			if (player != null && key.equals(playerKey(player.name)))
-			{
-				return player.id;
-			}
-		}
-		return 0;
 	}
 
 	private static ProofTarget matchTile(EventTile tile, String sourceName, int itemId)
@@ -147,15 +128,6 @@ final class AllowedDrops
 			}
 		}
 		return null;
-	}
-
-	private static String playerKey(String name)
-	{
-		if (name == null)
-		{
-			return "";
-		}
-		return Text.removeTags(name).replace('\u00A0', ' ').trim().toLowerCase(Locale.ROOT);
 	}
 
 	private static boolean hasRuneLiteId(EventItem item, int itemId)

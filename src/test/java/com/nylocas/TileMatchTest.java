@@ -8,7 +8,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-public class AllowedDropsTest
+public class TileMatchTest
 {
 	@Test
 	public void boardOrder()
@@ -24,7 +24,7 @@ public class AllowedDropsTest
 		earlier.col = 0;
 		earlier.title = "Earlier";
 
-		AllowedDrops.ProofTarget target = AllowedDrops.firstProof(List.of(later, earlier), "Crystalline Hunllef", 4207);
+		TileMatch.ProofTarget target = TileMatch.firstProof(List.of(later, earlier), "Crystalline Hunllef", 4207);
 
 		assertEquals(4, target.tile.id);
 		assertEquals("the_gauntlet", target.sourceId);
@@ -41,7 +41,7 @@ public class AllowedDropsTest
 		next.col = 1;
 		next.title = "Next";
 
-		AllowedDrops.ProofTarget target = AllowedDrops.firstProof(List.of(full, next), "Corrupted Hunllef", 4207);
+		TileMatch.ProofTarget target = TileMatch.firstProof(List.of(full, next), "Corrupted Hunllef", 4207);
 
 		assertEquals(9, target.tile.id);
 		assertEquals("the_corrupted_gauntlet", target.sourceId);
@@ -56,10 +56,10 @@ public class AllowedDropsTest
 		second.col = 1;
 		List<EventTile> tiles = List.of(first, second);
 
-		AllowedDrops.ProofTarget target = AllowedDrops.firstProof(tiles, "Crystalline Hunllef", 4207);
+		TileMatch.ProofTarget target = TileMatch.firstProof(tiles, "Crystalline Hunllef", 4207);
 		target.item.pending++;
 
-		assertEquals(9, AllowedDrops.firstProof(tiles, "Crystalline Hunllef", 4207).tile.id);
+		assertEquals(9, TileMatch.firstProof(tiles, "Crystalline Hunllef", 4207).tile.id);
 	}
 
 	@Test
@@ -71,7 +71,7 @@ public class AllowedDropsTest
 		tile.items.get(0).count = 1;
 		tile.items.get(0).pending = 2;
 
-		assertNull(AllowedDrops.firstProof(List.of(tile), "Crystalline Hunllef", 4207));
+		assertNull(TileMatch.firstProof(List.of(tile), "Crystalline Hunllef", 4207));
 	}
 
 	@Test
@@ -83,32 +83,13 @@ public class AllowedDropsTest
 		next.id = 9;
 		next.col = 1;
 
-		assertEquals(9, AllowedDrops.firstProof(List.of(done, next), "Crystalline Hunllef", 4207).tile.id);
+		assertEquals(9, TileMatch.firstProof(List.of(done, next), "Crystalline Hunllef", 4207).tile.id);
 	}
 
 	@Test
 	public void wrongItemIsNotAProof()
 	{
-		assertNull(AllowedDrops.firstProof(List.of(seedTile()), "Crystalline Hunllef", 4151));
-	}
-
-	@Test
-	public void playerName()
-	{
-		EventPlayer playerA = new EventPlayer();
-		playerA.id = 9;
-		playerA.name = "playerA";
-		EventPlayer playerB = new EventPlayer();
-		playerB.id = 4;
-		playerB.name = "playerB";
-		List<EventPlayer> players = List.of(playerA, playerB);
-
-		assertEquals(9, AllowedDrops.playerId(players, "playera"));
-		assertEquals(9, AllowedDrops.playerId(players, "<img=2>playerA"));
-		assertEquals(9, AllowedDrops.playerId(players, "playerA\u00A0"));
-		assertEquals(4, AllowedDrops.playerId(players, "playerB"));
-		assertEquals(0, AllowedDrops.playerId(players, "Other"));
-		assertEquals(0, AllowedDrops.playerId(players, null));
+		assertNull(TileMatch.firstProof(List.of(seedTile()), "Crystalline Hunllef", 4151));
 	}
 
 	@Test
@@ -116,12 +97,12 @@ public class AllowedDropsTest
 	{
 		List<EventTile> tiles = List.of(seedTile());
 
-		assertTrue(AllowedDrops.allowsSource(tiles, "Crystalline Hunllef"));
-		assertTrue(AllowedDrops.allowsSource(tiles, "Corrupted Hunllef"));
-		assertFalse(AllowedDrops.allowsSource(tiles, "The Gauntlet"));
-		assertFalse(AllowedDrops.allowsSource(tiles, "Goblin"));
-		assertFalse(AllowedDrops.allowsSource(tiles, null));
-		assertFalse(AllowedDrops.allowsSource(null, "Crystalline Hunllef"));
+		assertTrue(TileMatch.allowsSource(tiles, "Crystalline Hunllef"));
+		assertTrue(TileMatch.allowsSource(tiles, "Corrupted Hunllef"));
+		assertFalse(TileMatch.allowsSource(tiles, "The Gauntlet"));
+		assertFalse(TileMatch.allowsSource(tiles, "Goblin"));
+		assertFalse(TileMatch.allowsSource(tiles, null));
+		assertFalse(TileMatch.allowsSource(null, "Crystalline Hunllef"));
 	}
 
 	private static EventTile seedTile()

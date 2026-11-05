@@ -95,15 +95,15 @@ final class ProofUploader
 		cancelProofCalls();
 	}
 
-	void releaseReservations(List<AllowedDrops.ProofTarget> targets)
+	void releaseReservations(List<TileMatch.ProofTarget> targets)
 	{
-		for (AllowedDrops.ProofTarget target : targets)
+		for (TileMatch.ProofTarget target : targets)
 		{
 			releaseReservation(target);
 		}
 	}
 
-	void capture(Directory directory, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<AllowedDrops.ProofTarget> proofs, long playerId, String proofKey, Integer completions, boolean hidePrivateMessages, boolean openChat, DiscordNotice discord)
+	void capture(Directory directory, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<TileMatch.ProofTarget> proofs, long playerId, String proofKey, Integer completions, boolean hidePrivateMessages, boolean openChat, DiscordNotice discord)
 	{
 		if (openChat)
 		{
@@ -215,7 +215,7 @@ final class ProofUploader
 		});
 	}
 
-	private void saveAndUploadScreenshot(Directory directory, BufferedImage shot, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<AllowedDrops.ProofTarget> targets, long playerId, String key, Integer completions, DiscordNotice discord)
+	private void saveAndUploadScreenshot(Directory directory, BufferedImage shot, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<TileMatch.ProofTarget> targets, long playerId, String key, Integer completions, DiscordNotice discord)
 	{
 		if (!running || shot == null)
 		{
@@ -264,7 +264,7 @@ final class ProofUploader
 		{
 			return;
 		}
-		for (AllowedDrops.ProofTarget target : targets)
+		for (TileMatch.ProofTarget target : targets)
 		{
 			if (!running)
 			{
@@ -301,7 +301,7 @@ final class ProofUploader
 		}
 	}
 
-	private void enqueueProof(byte[] png, AllowedDrops.ProofTarget target, long playerId, String key, Integer completions, DiscordNotice discord)
+	private void enqueueProof(byte[] png, TileMatch.ProofTarget target, long playerId, String key, Integer completions, DiscordNotice discord)
 	{
 		RequestBody file = RequestBody.create(MediaType.parse("image/png"), png);
 		MultipartBody.Builder form = new MultipartBody.Builder()
@@ -437,7 +437,7 @@ final class ProofUploader
 		}
 	}
 
-	private void releaseReservation(AllowedDrops.ProofTarget target)
+	private void releaseReservation(TileMatch.ProofTarget target)
 	{
 		Runnable undo = () ->
 		{
@@ -504,7 +504,7 @@ final class ProofUploader
 		Filepath get() throws IOException;
 	}
 
-	private void postDiscord(byte[] png, DiscordNotice notice, AllowedDrops.ProofTarget target)
+	private void postDiscord(byte[] png, DiscordNotice notice, TileMatch.ProofTarget target)
 	{
 		if (notice == null || notice.webhook == null || notice.webhook.isEmpty() || png == null)
 		{
@@ -548,7 +548,7 @@ final class ProofUploader
 		return "## " + team + "\n**" + player + "** has received: **" + item + "** from **" + source + "**";
 	}
 
-	private static String sourceLabel(AllowedDrops.ProofTarget target)
+	private static String sourceLabel(TileMatch.ProofTarget target)
 	{
 		if (target == null || target.item == null || target.item.sources == null || target.sourceId == null)
 		{

@@ -675,7 +675,7 @@ public class NylocasPlugin extends Plugin
 			return;
 		}
 		List<EventTile> tiles = board.tiles();
-		if (!AllowedDrops.allowsSource(tiles, sourceName))
+		if (!TileMatch.allowsSource(tiles, sourceName))
 		{
 			return;
 		}
@@ -686,7 +686,7 @@ public class NylocasPlugin extends Plugin
 		{
 			String label = itemLabel(stack.getId());
 			seen.add(label);
-			AllowedDrops.ProofTarget target = AllowedDrops.firstProof(tiles, sourceName, stack.getId());
+			TileMatch.ProofTarget target = TileMatch.firstProof(tiles, sourceName, stack.getId());
 			if (target == null)
 			{
 				continue;
@@ -706,13 +706,13 @@ public class NylocasPlugin extends Plugin
 		boolean saveLocally = config.saveProofs();
 		boolean live = config.connect() && !proofsStopped && !board.beforeStart() && !board.afterEnd();
 		boolean uploadProofs = config.submitProofs() && live;
-		List<AllowedDrops.ProofTarget> targets = List.of();
+		List<TileMatch.ProofTarget> targets = List.of();
 		String proofKey = "";
 		long proofPlayerId = 0;
 		if (live)
 		{
 			proofKey = teamKey();
-			proofPlayerId = AllowedDrops.playerId(board.players(), localPlayerName());
+			proofPlayerId = EventPlayer.playerId(board.players(), localPlayerName());
 		}
 		if (uploadProofs)
 		{
@@ -728,9 +728,9 @@ public class NylocasPlugin extends Plugin
 		}
 		if (!board.beforeStart() && config.eventDrop())
 		{
-			List<AllowedDrops.ProofTarget> chatTargets = uploadProofs ? targets : dropsOf(matched);
+			List<TileMatch.ProofTarget> chatTargets = uploadProofs ? targets : dropsOf(matched);
 			String template = uploadProofs ? WebsocketText.OWN_DROP_SUBMITTED : WebsocketText.OWN_DROP;
-			for (AllowedDrops.ProofTarget target : chatTargets)
+			for (TileMatch.ProofTarget target : chatTargets)
 			{
 				String dropName = target.itemName == null ? "" : target.itemName;
 				chat(WebsocketText.eventDrop(template, dropName, TileText.tileTitle(target.tile), teamName(), config.ownTeamColor(), config.dropColor(), config.tileColor()));
@@ -738,8 +738,8 @@ public class NylocasPlugin extends Plugin
 		}
 		if (live && !proofKey.isEmpty() && proofPlayerId != 0)
 		{
-			List<AllowedDrops.ProofTarget> announced = uploadProofs ? targets : dropsOf(matched);
-			for (AllowedDrops.ProofTarget target : announced)
+			List<TileMatch.ProofTarget> announced = uploadProofs ? targets : dropsOf(matched);
+			for (TileMatch.ProofTarget target : announced)
 			{
 				drops.announce(target, proofPlayerId, proofKey);
 			}
@@ -762,12 +762,12 @@ public class NylocasPlugin extends Plugin
 		return label == null ? Integer.toString(itemId) : label;
 	}
 
-	private List<AllowedDrops.ProofTarget> reserveProofs(List<EventTile> tiles, String sourceName, List<LootDrop> matched)
+	private List<TileMatch.ProofTarget> reserveProofs(List<EventTile> tiles, String sourceName, List<LootDrop> matched)
 	{
-		List<AllowedDrops.ProofTarget> targets = new ArrayList<>();
+		List<TileMatch.ProofTarget> targets = new ArrayList<>();
 		for (LootDrop drop : matched)
 		{
-			AllowedDrops.ProofTarget target = AllowedDrops.firstProof(tiles, sourceName, drop.itemId);
+			TileMatch.ProofTarget target = TileMatch.firstProof(tiles, sourceName, drop.itemId);
 			if (target == null)
 			{
 				continue;
@@ -779,9 +779,9 @@ public class NylocasPlugin extends Plugin
 		return targets;
 	}
 
-	private static List<AllowedDrops.ProofTarget> dropsOf(List<LootDrop> matched)
+	private static List<TileMatch.ProofTarget> dropsOf(List<LootDrop> matched)
 	{
-		List<AllowedDrops.ProofTarget> targets = new ArrayList<>(matched.size());
+		List<TileMatch.ProofTarget> targets = new ArrayList<>(matched.size());
 		for (LootDrop drop : matched)
 		{
 			targets.add(drop.target);
@@ -846,9 +846,9 @@ public class NylocasPlugin extends Plugin
 	{
 		final int itemId;
 		final String label;
-		final AllowedDrops.ProofTarget target;
+		final TileMatch.ProofTarget target;
 
-		LootDrop(int itemId, String label, AllowedDrops.ProofTarget target)
+		LootDrop(int itemId, String label, TileMatch.ProofTarget target)
 		{
 			this.itemId = itemId;
 			this.label = label;

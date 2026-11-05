@@ -62,12 +62,12 @@ public class DropAnnouncerTest
 		return new DropAnnouncer(http, new Gson(), ids::getAndIncrement);
 	}
 
-	private static AllowedDrops.ProofTarget target()
+	private static TileMatch.ProofTarget target()
 	{
 		EventTile tile = new EventTile();
 		tile.id = 4;
 		EventItem item = new EventItem();
 		item.key = "bandos_hilt";
-		return new AllowedDrops.ProofTarget(tile, item, "bandos");
+		return new TileMatch.ProofTarget(tile, item, "bandos");
 	}
 }
