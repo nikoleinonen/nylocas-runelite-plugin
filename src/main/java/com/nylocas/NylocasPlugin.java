@@ -3,7 +3,6 @@ package com.nylocas;
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 import com.google.inject.Provides;
-import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.time.Instant;
@@ -60,8 +59,6 @@ import okhttp3.Response;
 )
 public class NylocasPlugin extends Plugin
 {
-	static final String API_BASE = "https://api.nylocas.com";
-
 	@Inject
 	private Client client;
 
@@ -127,7 +124,8 @@ public class NylocasPlugin extends Plugin
 		running = true;
 		loginScreen = client.getGameState() == GameState.LOGIN_SCREEN;
 		board = new EventBoardClient(okHttpClient, gson, clientThread, itemManager, this::localPlayerName);
-		websocket = new EventWebsocket(okHttpClient, gson, executor, this);
+		WebsocketFrames frames = new WebsocketFrames(config, () -> running, () -> panel, () -> board, this::chat, this::consumeAnnounce);
+		websocket = new EventWebsocket(okHttpClient, gson, executor, this, frames);
 		proofs = new ProofUploader(client, clientThread, drawManager, executor, okHttpClient, gson, this::sessionId, this::eventAfterEnd, this::onProofEventEnded);
 		board.start();
 		proofs.start();
@@ -604,184 +602,6 @@ public class NylocasPlugin extends Plugin
 	{
 		EventBoardClient current = board;
 		return current != null && current.afterEnd();
-	}
-
-	void onWebsocketFrame(EventWebsocket.Frame frame)
-	{
-		if (!running || frame == null || frame.type == null)
-		{
-			return;
-		}
-		if ("progress".equals(frame.type))
-		{
-			boolean complete = Boolean.TRUE.equals(frame.complete);
-			if (frame.approval && config.receiveOwn())
-			{
-				chat(WebsocketText.approved(approvalTemplate(complete), teamName(), tileTitle(frame.tileId), accentColor(true), config.tileColor()));
-			}
-			else if ("reject".equals(frame.action) || "delete".equals(frame.action))
-			{
-				if (config.receiveOwnRejections())
-				{
-					chatReview(frame, true);
-				}
-			}
-			EventPanel current = panel;
-			if (current != null)
-			{
-				current.applyProgress(frame.tileId, frame.item, frame.approved, frame.pending, complete);
-				if (frame.openRow != null)
-				{
-					current.noteOpenRow(frame.openRow);
-				}
-			}
-			if (board != null)
-			{
-				board.noteProgress(frame.tileId, frame.item, frame.approved, frame.pending, complete);
-			}
-			return;
-		}
-		if ("approved".equals(frame.type))
-		{
-			String team = frame.teamName == null ? "" : frame.teamName;
-			boolean complete = Boolean.TRUE.equals(frame.complete);
-			chat(WebsocketText.approved(approvalTemplate(complete), team, enemyTileTitle(frame), accentColor(false), config.tileColor()));
-			return;
-		}
-		if ("dropped".equals(frame.type))
-		{
-			if (consumeAnnounce(frame.id))
-			{
-				return;
-			}
-			String team = frame.teamName == null ? "" : frame.teamName;
-			boolean own = !team.isEmpty() && team.equals(teamName());
-			if (own && !config.eventDrop())
-			{
-				return;
-			}
-			chat(WebsocketText.teamEventDrop(WebsocketText.TEAM_DROP, team, itemLabel(frame), enemyTileTitle(frame), accentColor(own), config.dropColor(), config.tileColor()));
-			return;
-		}
-		if ("rejected".equals(frame.type) || "deleted".equals(frame.type))
-		{
-			chatReview(frame, false);
-			return;
-		}
-		if ("code".equals(frame.type))
-		{
-			EventBoardClient current = board;
-			if (current != null)
-			{
-				current.noteEventCode(frame.eventCode);
-			}
-			return;
-		}
-		if ("rank".equals(frame.type))
-		{
-			if (config.receiveRank())
-			{
-				boolean winner = Boolean.TRUE.equals(frame.winner);
-				chat(WebsocketText.rank(rankTemplate(frame.leader, winner), frame.leader, accentColor(ownLeader(frame.leader))));
-			}
-			EventPanel current = panel;
-			if (current != null)
-			{
-				current.showPlace(frame.place);
-			}
-		}
-	}
-
-	private void chatReview(EventWebsocket.Frame frame, boolean own)
-	{
-		String tile = own ? tileTitle(frame.tileId) : enemyTileTitle(frame);
-		String team = own ? teamName() : (frame.teamName == null ? "" : frame.teamName);
-		Color teamColor = accentColor(own);
-		if (own ? "reject".equals(frame.action) : "rejected".equals(frame.type))
-		{
-			chat(WebsocketText.rejected(rejectionTemplate(frame.rejectionReason), team, tile, frame.rejectionReason, teamColor, config.tileColor(), config.rejectionColor()));
-			return;
-		}
-		if (own ? "delete".equals(frame.action) : "deleted".equals(frame.type))
-		{
-			chat(WebsocketText.deleted(WebsocketText.DELETED, team, tile, teamColor, config.tileColor()));
-		}
-	}
-
-	private String approvalTemplate(boolean complete)
-	{
-		return complete ? WebsocketText.APPROVED_COMPLETE : WebsocketText.APPROVED;
-	}
-
-	private String rankTemplate(String leader, boolean winner)
-	{
-		if (leader == null || leader.isEmpty())
-		{
-			return WebsocketText.RANK_TIE;
-		}
-		if (winner)
-		{
-			return WebsocketText.RANK_WIN;
-		}
-		return WebsocketText.RANK_LEAD;
-	}
-
-	private String rejectionTemplate(String reason)
-	{
-		if (reason == null || Text.removeTags(reason).isEmpty())
-		{
-			return WebsocketText.REJECTED;
-		}
-		return WebsocketText.REJECTED_REASON;
-	}
-
-	private String enemyTileTitle(EventWebsocket.Frame frame)
-	{
-		String local = tileTitle(frame.tileId);
-		if (!local.isEmpty())
-		{
-			return local;
-		}
-		if (frame.title != null && !frame.title.isEmpty())
-		{
-			return frame.title;
-		}
-		return "";
-	}
-
-	private String tileTitle(long tileId)
-	{
-		EventPanel current = panel;
-		if (current == null)
-		{
-			return "";
-		}
-		return current.tileTitle(tileId);
-	}
-
-	private String itemLabel(EventWebsocket.Frame frame)
-	{
-		EventPanel current = panel;
-		if (current != null)
-		{
-			return current.itemLabel(frame.tileId, frame.item);
-		}
-		return TileText.catalogName(frame.item);
-	}
-
-	private Color accentColor(boolean own)
-	{
-		return own ? config.ownTeamColor() : config.enemyTeamColor();
-	}
-
-	private boolean ownLeader(String leader)
-	{
-		if (leader == null || leader.isEmpty() || board == null)
-		{
-			return false;
-		}
-		String ours = board.teamName();
-		return ours != null && !ours.isEmpty() && ours.equals(leader);
 	}
 
 	private void onLogin()

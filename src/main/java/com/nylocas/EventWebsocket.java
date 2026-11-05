@@ -24,6 +24,7 @@ final class EventWebsocket
 	private final Gson gson;
 	private final ScheduledExecutorService executor;
 	private final NylocasPlugin plugin;
+	private final WebsocketFrames frames;
 
 	private volatile int generation;
 	private volatile boolean stopped = true;
@@ -40,7 +41,7 @@ final class EventWebsocket
 	private ScheduledFuture<?> pending;
 	private WebSocket socket;
 
-	EventWebsocket(OkHttpClient http, Gson gson, ScheduledExecutorService executor, NylocasPlugin plugin)
+	EventWebsocket(OkHttpClient http, Gson gson, ScheduledExecutorService executor, NylocasPlugin plugin, WebsocketFrames frames)
 	{
 		this.http = http.newBuilder()
 			.pingInterval(60, TimeUnit.SECONDS)
@@ -49,6 +50,7 @@ final class EventWebsocket
 		this.gson = gson;
 		this.executor = executor;
 		this.plugin = plugin;
+		this.frames = frames;
 	}
 
 	static String filterText(boolean enemy, boolean enemyReject, boolean enemyDrop)
@@ -228,7 +230,7 @@ final class EventWebsocket
 				{
 					return;
 				}
-				SwingUtilities.invokeLater(() -> plugin.onWebsocketFrame(frame));
+				SwingUtilities.invokeLater(() -> frames.onFrame(frame));
 			}
 
 			@Override
