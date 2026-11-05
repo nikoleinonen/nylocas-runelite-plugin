@@ -83,7 +83,7 @@ public class NylocasPlugin extends Plugin
 	private EventOverlay overlay;
 	private volatile EventPanel panel;
 	private volatile boolean running;
-	private EventBoardClient board;
+	private EventBoardClient boardClient;
 	private EventWebsocket websocket;
 	private ProofCapture proofs;
 	private DropAnnouncer drops;
@@ -111,15 +111,15 @@ public class NylocasPlugin extends Plugin
 	{
 		running = true;
 		loginScreen = client.getGameState() == GameState.LOGIN_SCREEN;
-		board = new EventBoardClient(okHttpClient, gson, clientThread, itemManager, this::localPlayerName);
+		boardClient = new EventBoardClient(okHttpClient, gson, clientThread, itemManager, this::localPlayerName);
 		if (drops == null)
 		{
 			drops = new DropAnnouncer(okHttpClient, gson);
 		}
-		WebsocketFrames frames = new WebsocketFrames(config, () -> running, () -> panel, () -> board, this::chat, drops::consume);
+		WebsocketFrames frames = new WebsocketFrames(config, () -> running, () -> panel, () -> boardClient, this::chat, drops::consume);
 		websocket = new EventWebsocket(okHttpClient, gson, executor, this, frames, this::enemyFilters);
 		proofs = new ProofCapture(client, clientThread, drawManager, executor, okHttpClient, gson, this::sessionId, this::eventAfterEnd, this::onProofEventEnded);
-		board.start();
+		boardClient.start();
 		proofs.start();
 		overlay = new EventOverlay(config, this);
 		overlayManager.add(overlay);
@@ -152,9 +152,9 @@ public class NylocasPlugin extends Plugin
 		{
 			websocket.stop();
 		}
-		if (board != null)
+		if (boardClient != null)
 		{
-			board.stop();
+			boardClient.stop();
 		}
 		if (proofs != null)
 		{
@@ -183,25 +183,25 @@ public class NylocasPlugin extends Plugin
 
 	String eventCode()
 	{
-		EventBoardClient current = board;
+		EventBoardClient current = boardClient;
 		return current == null ? "" : current.eventCode();
 	}
 
 	boolean eventLoaded()
 	{
-		EventBoardClient current = board;
+		EventBoardClient current = boardClient;
 		return current != null && current.eventLoaded();
 	}
 
 	boolean eventStarted()
 	{
-		EventBoardClient current = board;
+		EventBoardClient current = boardClient;
 		return current != null && current.eventStarted();
 	}
 
 	Instant eventStartsAt()
 	{
-		EventBoardClient current = board;
+		EventBoardClient current = boardClient;
 		return current == null ? null : current.startsAt();
 	}
 
@@ -350,7 +350,7 @@ public class NylocasPlugin extends Plugin
 
 	boolean fetchEvent(String key, EventPanel panel)
 	{
-		return board.fetch(key, panel, config.connect());
+		return boardClient.fetch(key, panel, config.connect());
 	}
 
 	boolean websocketEnabled()
@@ -365,15 +365,15 @@ public class NylocasPlugin extends Plugin
 
 	void refreshEvent(int openRow, int rowTicket)
 	{
-		if (board != null)
+		if (boardClient != null)
 		{
-			board.refresh(panel, openRow, rowTicket);
+			boardClient.refresh(panel, openRow, rowTicket);
 		}
 	}
 
 	private String teamName()
 	{
-		return board == null || board.teamName() == null ? "" : board.teamName();
+		return boardClient == null || boardClient.teamName() == null ? "" : boardClient.teamName();
 	}
 
 	void endSession()
@@ -393,9 +393,9 @@ public class NylocasPlugin extends Plugin
 		{
 			websocket.stop();
 		}
-		if (board != null)
+		if (boardClient != null)
 		{
-			board.clearSession();
+			boardClient.clearSession();
 		}
 	}
 
@@ -470,7 +470,7 @@ public class NylocasPlugin extends Plugin
 
 	private void applyRealtime(int ticket)
 	{
-		if (!running || ticket != realtimeGeneration.get() || websocket == null || board == null)
+		if (!running || ticket != realtimeGeneration.get() || websocket == null || boardClient == null)
 		{
 			return;
 		}
@@ -487,12 +487,12 @@ public class NylocasPlugin extends Plugin
 			}
 			return;
 		}
-		if (websocket.isLive() || board.afterEnd())
+		if (websocket.isLive() || boardClient.afterEnd())
 		{
 			return;
 		}
-		Instant starts = board.startsAt();
-		Instant ends = board.endsAt();
+		Instant starts = boardClient.startsAt();
+		Instant ends = boardClient.endsAt();
 		if (starts == null || ends == null)
 		{
 			return;
@@ -595,7 +595,7 @@ public class NylocasPlugin extends Plugin
 
 	private boolean eventAfterEnd()
 	{
-		EventBoardClient current = board;
+		EventBoardClient current = boardClient;
 		return current != null && current.afterEnd();
 	}
 
@@ -618,10 +618,10 @@ public class NylocasPlugin extends Plugin
 		SwingUtilities.invokeLater(current::connectOnLogin);
 	}
 
-	void announceSession(EventBoard board, boolean reconnected)
+	void announceSession(EventBoard event, boolean reconnected)
 	{
-		String eventName = board == null || board.eventName == null ? "" : board.eventName;
-		String teamName = board == null || board.teamName == null ? "" : board.teamName;
+		String eventName = event == null || event.eventName == null ? "" : event.eventName;
+		String teamName = event == null || event.teamName == null ? "" : event.teamName;
 		if (reconnected)
 		{
 			chat(LoginText.reconnected(eventName, teamName));
@@ -674,7 +674,7 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		List<EventTile> tiles = board.tiles();
+		List<EventTile> tiles = boardClient.tiles();
 		if (!TileMatch.allowsSource(tiles, sourceName))
 		{
 			return;
@@ -704,7 +704,7 @@ public class NylocasPlugin extends Plugin
 			return;
 		}
 		boolean saveLocally = config.saveProofs();
-		boolean live = config.connect() && !proofsStopped && !board.beforeStart() && !board.afterEnd();
+		boolean live = config.connect() && !proofsStopped && !boardClient.beforeStart() && !boardClient.afterEnd();
 		boolean uploadProofs = config.submitProofs() && live;
 		List<TileMatch.ProofTarget> targets = List.of();
 		String proofKey = "";
@@ -712,7 +712,7 @@ public class NylocasPlugin extends Plugin
 		if (live)
 		{
 			proofKey = teamKey();
-			proofPlayerId = EventPlayer.playerId(board.players(), localPlayerName());
+			proofPlayerId = EventPlayer.playerId(boardClient.players(), localPlayerName());
 		}
 		if (uploadProofs)
 		{
@@ -726,7 +726,7 @@ public class NylocasPlugin extends Plugin
 				uploadProofs = false;
 			}
 		}
-		if (!board.beforeStart() && config.eventDrop())
+		if (!boardClient.beforeStart() && config.eventDrop())
 		{
 			List<TileMatch.ProofTarget> chatTargets = uploadProofs ? targets : dropsOf(matched);
 			String template = uploadProofs ? NotificationText.OWN_DROP_SUBMITTED : NotificationText.OWN_DROP;
@@ -748,7 +748,7 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		proofs.capture(this::pluginDirectory, board.eventName(), labels, saveLocally, uploadProofs, targets, proofPlayerId, proofKey, completionCount(sourceName), config.hidePrivateMessages(), config.openChat(), discordNotice());
+		proofs.capture(this::pluginDirectory, boardClient.eventName(), labels, saveLocally, uploadProofs, targets, proofPlayerId, proofKey, completionCount(sourceName), config.hidePrivateMessages(), config.openChat(), discordNotice());
 	}
 
 	private Filepath pluginDirectory() throws IOException
@@ -758,7 +758,7 @@ public class NylocasPlugin extends Plugin
 
 	private String itemLabel(int itemId)
 	{
-		String label = board.itemName(itemId);
+		String label = boardClient.itemName(itemId);
 		return label == null ? Integer.toString(itemId) : label;
 	}
 
@@ -795,13 +795,13 @@ public class NylocasPlugin extends Plugin
 		{
 			return null;
 		}
-		String webhook = board.discordWebhookUrl();
+		String webhook = boardClient.discordWebhookUrl();
 		if (webhook == null || webhook.isEmpty())
 		{
 			return null;
 		}
 		String player = localPlayerName();
-		return new ProofCapture.DiscordNotice(webhook, player, board.teamName());
+		return new ProofCapture.DiscordNotice(webhook, player, boardClient.teamName());
 	}
 
 	private String localPlayerName()
