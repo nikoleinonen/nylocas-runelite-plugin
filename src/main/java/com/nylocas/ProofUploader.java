@@ -318,7 +318,7 @@ final class ProofUploader
 			.addFormDataPart("file", "proof.png", file)
 			.build();
 		Request request = new Request.Builder()
-			.url(NylocasPlugin.API_BASE + "/plugin/submission")
+			.url(NylocasUrls.API + "/plugin/submission")
 			.header("Authorization", "Bearer " + key)
 			.post(body)
 			.build();

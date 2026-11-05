@@ -6,9 +6,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -175,7 +172,7 @@ final class EventBoardClient
 		}
 		int ticket = generation.get();
 		Request request = new Request.Builder()
-			.url(NylocasPlugin.API_BASE + "/plugin/event/" + hashKey(key) + "?open_row=" + openRow)
+			.url(NylocasUrls.API + "/plugin/event/" + NylocasUrls.hashKey(key) + "?open_row=" + openRow)
 			.header("Accept", "application/json")
 			.build();
 		okHttpClient.newCall(request).enqueue(new Callback()
@@ -231,7 +228,7 @@ final class EventBoardClient
 			return;
 		}
 		// The panel keeps the fetched tiles. Proof reservations stay on this copy until the next refresh.
-		tiles = NylocasPlugin.copyTiles(next);
+		tiles = copyTiles(next);
 		players = copyPlayers(board);
 		eventName = board == null || board.eventName == null ? "" : board.eventName;
 		teamName = board == null || board.teamName == null ? "" : board.teamName;
@@ -324,26 +321,6 @@ final class EventBoardClient
 		return name;
 	}
 
-	static String hashKey(String key)
-	{
-		try
-		{
-			byte[] sum = MessageDigest.getInstance("SHA-256").digest(key.getBytes(StandardCharsets.UTF_8));
-			char[] hex = new char[sum.length * 2];
-			for (int i = 0; i < sum.length; i++)
-			{
-				int value = sum[i] & 0xff;
-				hex[i * 2] = "0123456789abcdef".charAt(value >>> 4);
-				hex[i * 2 + 1] = "0123456789abcdef".charAt(value & 0x0f);
-			}
-			return new String(hex);
-		}
-		catch (NoSuchAlgorithmException ex)
-		{
-			throw new IllegalStateException(ex);
-		}
-	}
-
 	boolean fetch(String key, EventPanel panel, boolean connect)
 	{
 		if (!connect)
@@ -359,7 +336,7 @@ final class EventBoardClient
 			fetchCall.cancel();
 		}
 		Request request = new Request.Builder()
-			.url(NylocasPlugin.API_BASE + "/plugin/event/" + hashKey(key))
+			.url(NylocasUrls.API + "/plugin/event/" + NylocasUrls.hashKey(key))
 			.header("Accept", "application/json")
 			.build();
 		fetchCall = okHttpClient.newCall(request);
@@ -732,6 +709,56 @@ final class EventBoardClient
 			return "";
 		}
 		return board.discordWebhookUrl.trim();
+	}
+
+	static List<EventTile> copyTiles(List<EventTile> source)
+	{
+		List<EventTile> copy = new ArrayList<>(source.size());
+		for (EventTile tile : source)
+		{
+			copy.add(copyTile(tile));
+		}
+		return List.copyOf(copy);
+	}
+
+	private static EventTile copyTile(EventTile tile)
+	{
+		EventTile copy = new EventTile();
+		copy.id = tile.id;
+		copy.row = tile.row;
+		copy.col = tile.col;
+		copy.title = tile.title;
+		copy.iconItem = tile.iconItem;
+		copy.imageUrl = tile.imageUrl;
+		copy.imageFit = tile.imageFit;
+		copy.iconCount = tile.iconCount;
+		copy.complete = tile.complete;
+		copy.partial = tile.partial;
+		copy.need = tile.need;
+		copy.pool = tile.pool;
+		if (tile.items == null)
+		{
+			return copy;
+		}
+		List<EventItem> items = new ArrayList<>(tile.items.size());
+		for (EventItem item : tile.items)
+		{
+			items.add(item == null ? null : copyItem(item));
+		}
+		copy.items = items;
+		return copy;
+	}
+
+	private static EventItem copyItem(EventItem item)
+	{
+		EventItem copy = new EventItem();
+		copy.key = item.key;
+		copy.count = item.count;
+		copy.approved = item.approved;
+		copy.pending = item.pending;
+		copy.runeliteIds = item.runeliteIds == null ? null : new ArrayList<>(item.runeliteIds);
+		copy.sources = item.sources == null ? null : new ArrayList<>(item.sources);
+		return copy;
 	}
 
 	private static List<EventPlayer> copyPlayers(EventBoard board)

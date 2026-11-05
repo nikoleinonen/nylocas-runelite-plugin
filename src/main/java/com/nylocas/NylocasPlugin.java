@@ -1001,7 +1001,7 @@ public class NylocasPlugin extends Plugin
 		request.id = id;
 		RequestBody body = RequestBody.create(DROP_JSON, gson.toJson(request));
 		Request call = new Request.Builder()
-			.url(API_BASE + "/plugin/drop")
+			.url(NylocasUrls.API + "/plugin/drop")
 			.header("Authorization", "Bearer " + key)
 			.post(body)
 			.build();
@@ -1113,56 +1113,6 @@ public class NylocasPlugin extends Plugin
 			return null;
 		}
 		return client.getLocalPlayer().getName();
-	}
-
-	static List<EventTile> copyTiles(List<EventTile> source)
-	{
-		List<EventTile> copy = new ArrayList<>(source.size());
-		for (EventTile tile : source)
-		{
-			copy.add(copyTile(tile));
-		}
-		return List.copyOf(copy);
-	}
-
-	private static EventTile copyTile(EventTile tile)
-	{
-		EventTile copy = new EventTile();
-		copy.id = tile.id;
-		copy.row = tile.row;
-		copy.col = tile.col;
-		copy.title = tile.title;
-		copy.iconItem = tile.iconItem;
-		copy.imageUrl = tile.imageUrl;
-		copy.imageFit = tile.imageFit;
-		copy.iconCount = tile.iconCount;
-		copy.complete = tile.complete;
-		copy.partial = tile.partial;
-		copy.need = tile.need;
-		copy.pool = tile.pool;
-		if (tile.items == null)
-		{
-			return copy;
-		}
-		List<EventItem> items = new ArrayList<>(tile.items.size());
-		for (EventItem item : tile.items)
-		{
-			items.add(item == null ? null : copyItem(item));
-		}
-		copy.items = items;
-		return copy;
-	}
-
-	private static EventItem copyItem(EventItem item)
-	{
-		EventItem copy = new EventItem();
-		copy.key = item.key;
-		copy.count = item.count;
-		copy.approved = item.approved;
-		copy.pending = item.pending;
-		copy.runeliteIds = item.runeliteIds == null ? null : new ArrayList<>(item.runeliteIds);
-		copy.sources = item.sources == null ? null : new ArrayList<>(item.sources);
-		return copy;
 	}
 
 	private String lootSource(String lootName)

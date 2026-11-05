@@ -51,65 +51,6 @@ final class EventWebsocket
 		this.plugin = plugin;
 	}
 
-	static String url(String apiBase, String keyHash, boolean rank, boolean own, boolean enemy, boolean enemyReject, boolean enemyDrop)
-	{
-		String base;
-		if ("https://api.nylocas.com".equals(apiBase))
-		{
-			base = "wss://ws.nylocas.com";
-		}
-		else if ("http://127.0.0.1:8080".equals(apiBase))
-		{
-			base = "ws://127.0.0.1:8090";
-		}
-		else
-		{
-			throw new IllegalArgumentException("no websocket url for " + apiBase);
-		}
-		return base + "/plugin/websocket/" + keyHash
-			+ "?rank=" + (rank ? "1" : "0")
-			+ "&own=" + (own ? "1" : "0")
-			+ "&enemy=" + (enemy ? "1" : "0")
-			+ "&enemy_reject=" + (enemyReject ? "1" : "0")
-			+ "&enemy_drop=" + (enemyDrop ? "1" : "0");
-	}
-
-	static String website(String apiBase, String type, long eventId)
-	{
-		String base;
-		if ("https://api.nylocas.com".equals(apiBase))
-		{
-			base = "https://nylocas.com";
-		}
-		else if ("http://127.0.0.1:8080".equals(apiBase))
-		{
-			base = "http://127.0.0.1:5777";
-		}
-		else
-		{
-			throw new IllegalArgumentException("no website url for " + apiBase);
-		}
-		String slug = eventSlug(type);
-		if (slug.isEmpty() || eventId <= 0)
-		{
-			return base + "/";
-		}
-		return base + "/events/" + slug + "/" + eventId + "/overview";
-	}
-
-	private static String eventSlug(String type)
-	{
-		if ("classic_bingo".equals(type))
-		{
-			return "classic-bingo";
-		}
-		if ("levels_bingo".equals(type))
-		{
-			return "levels-bingo";
-		}
-		return "";
-	}
-
 	static String filterText(boolean enemy, boolean enemyReject, boolean enemyDrop)
 	{
 		return "{\"type\":\"filter\",\"enemy\":" + (enemy ? 1 : 0)
@@ -250,7 +191,7 @@ final class EventWebsocket
 			plugin.refreshEnemyFilters(this);
 			filtersDirty = false;
 			ticket = generation;
-			address = url(NylocasPlugin.API_BASE, EventBoardClient.hashKey(key), rank, own, enemy, enemyReject, enemyDrop);
+			address = NylocasUrls.websocket(NylocasUrls.hashKey(key), rank, own, enemy, enemyReject, enemyDrop);
 		}
 		Request request = new Request.Builder().url(address).build();
 		WebSocket opened = http.newWebSocket(request, new WebSocketListener()

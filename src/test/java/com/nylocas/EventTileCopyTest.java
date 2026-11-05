@@ -29,7 +29,7 @@ public class EventTileCopyTest
 		fetched.need = 1;
 		fetched.items = List.of(item);
 
-		List<EventTile> loot = NylocasPlugin.copyTiles(List.of(fetched));
+		List<EventTile> loot = EventBoardClient.copyTiles(List.of(fetched));
 		EventItem reserved = loot.get(0).items.get(0);
 		reserved.pending++;
 

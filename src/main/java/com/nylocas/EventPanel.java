@@ -106,7 +106,7 @@ final class EventPanel extends PluginPanel
 	private volatile boolean stopped;
 	private long cooldownUntil;
 	private Timer cooldownTimer;
-	private String websiteUrl = EventWebsocket.website(NylocasPlugin.API_BASE, "", 0);
+	private String websiteUrl = NylocasUrls.event("", 0);
 
 	EventPanel(NylocasPlugin plugin)
 	{
@@ -561,7 +561,7 @@ final class EventPanel extends PluginPanel
 		fetching = false;
 		refreshingBoard = false;
 		clearNotice();
-		websiteUrl = EventWebsocket.website(NylocasPlugin.API_BASE, board == null ? "" : board.type, board == null ? 0 : board.eventId);
+		websiteUrl = NylocasUrls.event(board == null ? "" : board.type, board == null ? 0 : board.eventId);
 		connected = true;
 		refreshingRow = false;
 		status.setText(teamLabel(board));
@@ -826,7 +826,7 @@ final class EventPanel extends PluginPanel
 
 	private void clearBoard()
 	{
-		websiteUrl = EventWebsocket.website(NylocasPlugin.API_BASE, "", 0);
+		websiteUrl = NylocasUrls.event("", 0);
 		selectedCell = null;
 		cells.clear();
 		knownTiles.clear();

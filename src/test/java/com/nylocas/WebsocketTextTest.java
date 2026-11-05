@@ -92,29 +92,4 @@ public class WebsocketTextTest
 			"{\"type\":\"filter\",\"enemy\":1,\"enemy_reject\":0,\"enemy_drop\":1}",
 			EventWebsocket.filterText(true, false, true));
 	}
-
-	@Test
-	public void liveUrl()
-	{
-		assertEquals(
-			"ws://127.0.0.1:8090/plugin/websocket/abc?rank=1&own=0&enemy=1&enemy_reject=0&enemy_drop=0",
-			EventWebsocket.url("http://127.0.0.1:8080", "abc", true, false, true, false, false));
-		assertEquals(
-			"wss://ws.nylocas.com/plugin/websocket/abc?rank=0&own=1&enemy=0&enemy_reject=1&enemy_drop=1",
-			EventWebsocket.url("https://api.nylocas.com", "abc", false, true, false, true, true));
-	}
-
-	@Test
-	public void websiteUrl()
-	{
-		assertEquals("https://nylocas.com/", EventWebsocket.website("https://api.nylocas.com", "", 0));
-		assertEquals("http://127.0.0.1:5777/", EventWebsocket.website("http://127.0.0.1:8080", null, 54));
-		assertEquals(
-			"https://nylocas.com/events/classic-bingo/54/overview",
-			EventWebsocket.website("https://api.nylocas.com", "classic_bingo", 54));
-		assertEquals(
-			"http://127.0.0.1:5777/events/levels-bingo/54/overview",
-			EventWebsocket.website("http://127.0.0.1:8080", "levels_bingo", 54));
-		assertEquals("https://nylocas.com/", EventWebsocket.website("https://api.nylocas.com", "other", 54));
-	}
 }

@@ -1,0 +1,69 @@
+package com.nylocas;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
+final class NylocasUrls
+{
+	static final String API = "http://127.0.0.1:8080";
+	static final String WEBSOCKET = "ws://127.0.0.1:8090";
+	static final String WEBSITE = "http://127.0.0.1:5777";
+
+	private NylocasUrls()
+	{
+	}
+
+	static String hashKey(String key)
+	{
+		try
+		{
+			byte[] sum = MessageDigest.getInstance("SHA-256").digest(key.getBytes(StandardCharsets.UTF_8));
+			char[] hex = new char[sum.length * 2];
+			for (int i = 0; i < sum.length; i++)
+			{
+				int value = sum[i] & 0xff;
+				hex[i * 2] = "0123456789abcdef".charAt(value >>> 4);
+				hex[i * 2 + 1] = "0123456789abcdef".charAt(value & 0x0f);
+			}
+			return new String(hex);
+		}
+		catch (NoSuchAlgorithmException ex)
+		{
+			throw new IllegalStateException(ex);
+		}
+	}
+
+	static String websocket(String keyHash, boolean rank, boolean own, boolean enemy, boolean enemyReject, boolean enemyDrop)
+	{
+		return WEBSOCKET + "/plugin/websocket/" + keyHash
+			+ "?rank=" + (rank ? "1" : "0")
+			+ "&own=" + (own ? "1" : "0")
+			+ "&enemy=" + (enemy ? "1" : "0")
+			+ "&enemy_reject=" + (enemyReject ? "1" : "0")
+			+ "&enemy_drop=" + (enemyDrop ? "1" : "0");
+	}
+
+	static String event(String type, long eventId)
+	{
+		String slug = eventSlug(type);
+		if (slug.isEmpty() || eventId <= 0)
+		{
+			return WEBSITE + "/";
+		}
+		return WEBSITE + "/events/" + slug + "/" + eventId + "/overview";
+	}
+
+	private static String eventSlug(String type)
+	{
+		if ("classic_bingo".equals(type))
+		{
+			return "classic-bingo";
+		}
+		if ("levels_bingo".equals(type))
+		{
+			return "levels-bingo";
+		}
+		return "";
+	}
+}
