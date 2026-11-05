@@ -51,7 +51,7 @@ public interface NylocasConfig extends Config
 		keyName = CONNECT,
 		name = "Connect to nylocas.com",
 		description = "Allow the client to communicate with the nylocas.com backend to retrieve information and submit proofs. This must be enabled for anything to work.",
-		warning = "This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers",
+		warning = "This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers. The server is the nylocas.com backend.",
 		position = 0,
 		section = eventSection
 	)
@@ -125,6 +125,7 @@ public interface NylocasConfig extends Config
 		keyName = "sendDiscord",
 		name = "Send drop to Discord",
 		description = "Send a screenshot to the event's Discord webhook. Nothing is sent if the organizer has not set a Discord webhook.",
+		warning = "This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers. The screenshot is sent to Discord.",
 		position = 2,
 		section = submissionsSection
 	)

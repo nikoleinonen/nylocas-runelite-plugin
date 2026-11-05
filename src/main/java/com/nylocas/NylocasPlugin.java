@@ -44,7 +44,7 @@ import okhttp3.OkHttpClient;
 @Slf4j
 @PluginDescriptor(
 	name = "Nylocas Clan Events",
-	description = "nylocas.com RuneLite integration",
+	description = "nylocas.com clan events website RuneLite integration",
 	internalName = "nylocas-clan-events"
 )
 public class NylocasPlugin extends Plugin
@@ -795,8 +795,8 @@ public class NylocasPlugin extends Plugin
 		{
 			return null;
 		}
-		String webhook = boardClient.discordWebhookUrl();
-		if (webhook == null || webhook.isEmpty())
+		String webhook = DiscordWebhook.allowed(boardClient.discordWebhookUrl());
+		if (webhook.isEmpty())
 		{
 			return null;
 		}

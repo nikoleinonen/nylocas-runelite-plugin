@@ -506,7 +506,8 @@ final class ProofCapture
 
 	private void postDiscord(byte[] png, DiscordNotice notice, TileMatch.ProofTarget target)
 	{
-		if (notice == null || notice.webhook == null || notice.webhook.isEmpty() || png == null)
+		String webhook = notice == null ? "" : DiscordWebhook.allowed(notice.webhook);
+		if (webhook.isEmpty() || png == null)
 		{
 			return;
 		}
@@ -518,7 +519,7 @@ final class ProofCapture
 			.addFormDataPart("files[0]", "proof.png", RequestBody.create(MediaType.parse("image/png"), png))
 			.build();
 		Request request = new Request.Builder()
-			.url(notice.webhook)
+			.url(webhook)
 			.post(body)
 			.build();
 		okHttpClient.newCall(request).enqueue(new Callback()

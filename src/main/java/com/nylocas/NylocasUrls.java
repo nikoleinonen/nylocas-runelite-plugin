@@ -6,11 +6,11 @@ import java.security.NoSuchAlgorithmException;
 
 final class NylocasUrls
 {
-	static final String API = "http://127.0.0.1:8080";
-	static final String WEBSOCKET = "ws://127.0.0.1:8090";
-	static final String WEBSITE = "http://127.0.0.1:5777";
+	static final String API = "https://api.nylocas.com"; // http://127.0.0.1:8080
+	static final String WEBSOCKET = "wss://ws.nylocas.com"; // ws://127.0.0.1:8090
+	static final String WEBSITE = "https://nylocas.com"; // http://127.0.0.1:5777
 	static final String CDN = "https://cdn.nylocas.com";
-	static final String MEDIA = "https://media.nylocas.com";
+	static final String MEDIA = "https://media.nylocas.com"; // https://dev.nylocas.com
 	static final String DISCORD = "https://discord.gg/3T23DAehU5";
 	static final String GITHUB = "https://github.com/nikoleinonen/nylocas-runelite-plugin";
 	static final String ITEM_ICONS = CDN + "/resources/icons/items/";
