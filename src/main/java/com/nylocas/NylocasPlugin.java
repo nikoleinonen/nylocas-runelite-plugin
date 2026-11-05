@@ -44,7 +44,7 @@ import okhttp3.OkHttpClient;
 @Slf4j
 @PluginDescriptor(
 	name = "Nylocas Clan Events",
-	description = "nylocas.com clan events website RuneLite integration",
+	description = "Shows your team's nylocas.com event board and can automatically submit proof images of your drops.",
 	internalName = "nylocas-clan-events"
 )
 public class NylocasPlugin extends Plugin
