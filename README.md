@@ -55,8 +55,6 @@ It is recommended to take your own screenshot as a backup, unless you're confide
 
 The screenshot can show your username, the chat, and other players who are on screen.
 
-[![Getting a drop, organizer approving it](https://i.imgur.com/PbgPm6k.gif)](https://imgur.com/PbgPm6k)
-
 ### Overlay
 
 The overlay sits at the top of the game. Before the event starts it counts down. Once the event is running it shows the event code and the time in UTC, in the form `DD/MM/YYYY HH:MM UTC`.
