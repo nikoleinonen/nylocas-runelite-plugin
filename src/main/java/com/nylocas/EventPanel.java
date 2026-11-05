@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -51,24 +52,23 @@ final class EventPanel extends PluginPanel
 		BorderFactory.createLineBorder(BORDER_LINE, 1),
 		new EmptyBorder(4, 4, 4, 6)
 	);
-	private static final Color COMPLETE_COLOR = new Color(0x10b981);
-	private static final Color PARTIAL_COLOR = new Color(0xfbbf24);
+	private static final Color COMPLETE_COLOR = new Color(0x25845C);
+	private static final Color PARTIAL_COLOR = new Color(0xE9B949);
 	private static final Color MUTED_TEXT = new Color(0x7b8087);
-	private static final Color PENDING_TEXT = new Color(0xfbbf24);
-	private static final Color PROGRESS_TEXT = new Color(0x10b981);
-	private static final Color TITLE_ACCENT = new Color(0x699172);
+	private static final Color PENDING_TEXT = new Color(0xE9B949);
+	private static final Color PROGRESS_TEXT = new Color(0x25845C);
+	private static final Color TITLE_ACCENT = new Color(0xC2C7CE);
 	private static final Color GOLD = new Color(0xe4c56a);
 	private static final Color SILVER = new Color(0xc5c9d0);
 	private static final Color BRONZE = new Color(0xc4894a);
 	private static final Color INCOMPLETE_TEXT = new Color(0xa0a0a0);
 	private static final Color HEADER_COLOR = new Color(0x1e1e1e);
 	private static final Color HEADER_LINE = new Color(0x171717);
-	private static final int COOLDOWN_MS = 2_000; // PUT TO 60_000 WHEN READY FOR PLUGIN HUB!
+	private static final int COOLDOWN_MS = 2_000; // TODO: PUT TO 60_000 WHEN READY FOR PLUGIN HUB!
 	private static final int LINK_ICON = 16;
 	private static final String ICON_STYLE = "border: 3,0,3,0,#0000";
 	private static final String DISCORD_URL = "https://discord.gg/3T23DAehU5";
 	private static final String GITHUB_URL = "https://github.com/nikoleinonen/nylocas-runelite-plugin";
-	private static final String WEBSITE_URL = "https://nylocas.com/";
 	private static final String KEY_HINT = "Set team key in config";
 	private static final String EVENT_ENDED = "The event has ended";
 	private static final String INVALID_KEY = "Invalid team key";
@@ -106,6 +106,7 @@ final class EventPanel extends PluginPanel
 	private volatile boolean stopped;
 	private long cooldownUntil;
 	private Timer cooldownTimer;
+	private String websiteUrl = EventWebsocket.website(NylocasPlugin.API_BASE, "", 0);
 
 	EventPanel(NylocasPlugin plugin)
 	{
@@ -132,9 +133,9 @@ final class EventPanel extends PluginPanel
 		JPanel buttons = new ShrinkWidth(new GridLayout(1, 3));
 		buttons.setOpaque(false);
 		buttons.setBorder(new EmptyBorder(4, 0, 4, 0));
-		buttons.add(linkCell("website.png", "Website", WEBSITE_URL));
-		buttons.add(linkCell("discord.png", "Discord", DISCORD_URL));
-		buttons.add(linkCell("github.png", "GitHub", GITHUB_URL));
+		buttons.add(linkCell("website.png", "Website", () -> websiteUrl));
+		buttons.add(linkCell("discord.png", "Discord", () -> DISCORD_URL));
+		buttons.add(linkCell("github.png", "GitHub", () -> GITHUB_URL));
 
 		JPanel titleRow = new JPanel(new BorderLayout());
 		titleRow.setBackground(HEADER_COLOR);
@@ -254,7 +255,7 @@ final class EventPanel extends PluginPanel
 		return connected && !stopped;
 	}
 
-	private JPanel linkCell(String resource, String tooltip, String url)
+	private JPanel linkCell(String resource, String tooltip, Supplier<String> url)
 	{
 		JPanel cell = new JPanel(new GridBagLayout());
 		cell.setOpaque(false);
@@ -262,7 +263,7 @@ final class EventPanel extends PluginPanel
 		return cell;
 	}
 
-	private JButton linkButton(String resource, String tooltip, String url)
+	private JButton linkButton(String resource, String tooltip, Supplier<String> url)
 	{
 		BufferedImage image = ImageUtil.resizeImage(ImageUtil.loadImageResource(getClass(), resource), LINK_ICON, LINK_ICON);
 		JButton button = new JButton(new ImageIcon(image));
@@ -276,7 +277,7 @@ final class EventPanel extends PluginPanel
 		SwingUtil.removeButtonDecorations(button);
 		button.putClientProperty("FlatLaf.style", ICON_STYLE);
 		button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		button.addActionListener(event -> LinkBrowser.browse(url));
+		button.addActionListener(event -> LinkBrowser.browse(url.get()));
 		return button;
 	}
 
@@ -560,6 +561,7 @@ final class EventPanel extends PluginPanel
 		fetching = false;
 		refreshingBoard = false;
 		clearNotice();
+		websiteUrl = EventWebsocket.website(NylocasPlugin.API_BASE, board == null ? "" : board.type, board == null ? 0 : board.eventId);
 		connected = true;
 		refreshingRow = false;
 		status.setText(teamLabel(board));
@@ -824,6 +826,7 @@ final class EventPanel extends PluginPanel
 
 	private void clearBoard()
 	{
+		websiteUrl = EventWebsocket.website(NylocasPlugin.API_BASE, "", 0);
 		selectedCell = null;
 		cells.clear();
 		knownTiles.clear();

@@ -74,6 +74,42 @@ final class EventWebsocket
 			+ "&enemy_drop=" + (enemyDrop ? "1" : "0");
 	}
 
+	static String website(String apiBase, String type, long eventId)
+	{
+		String base;
+		if ("https://api.nylocas.com".equals(apiBase))
+		{
+			base = "https://nylocas.com";
+		}
+		else if ("http://127.0.0.1:8080".equals(apiBase))
+		{
+			base = "http://127.0.0.1:5777";
+		}
+		else
+		{
+			throw new IllegalArgumentException("no website url for " + apiBase);
+		}
+		String slug = eventSlug(type);
+		if (slug.isEmpty() || eventId <= 0)
+		{
+			return base + "/";
+		}
+		return base + "/events/" + slug + "/" + eventId + "/overview";
+	}
+
+	private static String eventSlug(String type)
+	{
+		if ("classic_bingo".equals(type))
+		{
+			return "classic-bingo";
+		}
+		if ("levels_bingo".equals(type))
+		{
+			return "levels-bingo";
+		}
+		return "";
+	}
+
 	static String filterText(boolean enemy, boolean enemyReject, boolean enemyDrop)
 	{
 		return "{\"type\":\"filter\",\"enemy\":" + (enemy ? 1 : 0)

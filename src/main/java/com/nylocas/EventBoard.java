@@ -14,6 +14,11 @@ final class EventBoard
 	@SerializedName("event_name")
 	String eventName;
 
+	@SerializedName("event_id")
+	long eventId;
+
+	String type;
+
 	@SerializedName("event_code")
 	String eventCode;
 
