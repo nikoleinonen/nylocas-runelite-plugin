@@ -6,7 +6,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -680,14 +679,27 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		List<String> itemNames = new ArrayList<>();
-		for (ItemStack item : lootReceived.getItems())
+		List<String> seen = new ArrayList<>();
+		List<String> labels = new ArrayList<>();
+		List<LootDrop> matched = new ArrayList<>();
+		for (ItemStack stack : lootReceived.getItems())
 		{
-			itemNames.add(itemLabel(item.getId()));
+			String label = itemLabel(stack.getId());
+			seen.add(label);
+			AllowedDrops.ProofTarget target = AllowedDrops.firstProof(tiles, sourceName, stack.getId());
+			if (target == null)
+			{
+				continue;
+			}
+			target.itemName = label;
+			if (!labels.contains(label))
+			{
+				labels.add(label);
+			}
+			matched.add(new LootDrop(stack.getId(), label, target));
 		}
-		log.debug("Allowed source {} dropped {}", sourceName, itemNames);
-		List<String> labels = dropLabels(tiles, sourceName, lootReceived.getItems());
-		if (labels.isEmpty())
+		log.debug("Allowed source {} dropped {}", sourceName, seen);
+		if (matched.isEmpty())
 		{
 			return;
 		}
@@ -704,7 +716,8 @@ public class NylocasPlugin extends Plugin
 		}
 		if (uploadProofs)
 		{
-			targets = proofTargets(tiles, sourceName, lootReceived.getItems());
+			// Reserving one drop changes which tile the next drop matches.
+			targets = reserveProofs(tiles, sourceName, matched);
 			if (proofKey.isEmpty() || proofPlayerId == 0)
 			{
 				proofs.releaseReservations(targets);
@@ -713,13 +726,19 @@ public class NylocasPlugin extends Plugin
 				uploadProofs = false;
 			}
 		}
-		if (!board.beforeStart())
+		if (!board.beforeStart() && config.eventDrop())
 		{
-			notifyEventDrops(tiles, sourceName, lootReceived.getItems(), uploadProofs, targets);
+			List<AllowedDrops.ProofTarget> chatTargets = uploadProofs ? targets : dropsOf(matched);
+			String template = uploadProofs ? WebsocketText.OWN_DROP_SUBMITTED : WebsocketText.OWN_DROP;
+			for (AllowedDrops.ProofTarget target : chatTargets)
+			{
+				String dropName = target.itemName == null ? "" : target.itemName;
+				chat(WebsocketText.eventDrop(template, dropName, TileText.tileTitle(target.tile), teamName(), config.ownTeamColor(), config.dropColor(), config.tileColor()));
+			}
 		}
 		if (live && !proofKey.isEmpty() && proofPlayerId != 0)
 		{
-			List<AllowedDrops.ProofTarget> announced = uploadProofs ? targets : matchedTargets(tiles, sourceName, lootReceived.getItems());
+			List<AllowedDrops.ProofTarget> announced = uploadProofs ? targets : dropsOf(matched);
 			for (AllowedDrops.ProofTarget target : announced)
 			{
 				drops.announce(target, proofPlayerId, proofKey);
@@ -743,77 +762,29 @@ public class NylocasPlugin extends Plugin
 		return label == null ? Integer.toString(itemId) : label;
 	}
 
-	private void notifyEventDrops(List<EventTile> tiles, String sourceName, Collection<ItemStack> stacks, boolean autoSubmitted, List<AllowedDrops.ProofTarget> submitted)
-	{
-		if (!config.eventDrop())
-		{
-			return;
-		}
-		if (autoSubmitted)
-		{
-			for (AllowedDrops.ProofTarget target : submitted)
-			{
-				String dropName = target.itemName == null ? "" : target.itemName;
-				chat(WebsocketText.eventDrop(WebsocketText.OWN_DROP_SUBMITTED, dropName, TileText.tileTitle(target.tile), teamName(), config.ownTeamColor(), config.dropColor(), config.tileColor()));
-			}
-			return;
-		}
-		for (ItemStack stack : stacks)
-		{
-			AllowedDrops.ProofTarget target = AllowedDrops.firstProof(tiles, sourceName, stack.getId());
-			if (target == null)
-			{
-				continue;
-			}
-			chat(WebsocketText.eventDrop(WebsocketText.OWN_DROP, itemLabel(stack.getId()), TileText.tileTitle(target.tile), teamName(), config.ownTeamColor(), config.dropColor(), config.tileColor()));
-		}
-	}
-
-	private List<String> dropLabels(List<EventTile> tiles, String sourceName, Collection<ItemStack> stacks)
-	{
-		List<String> labels = new ArrayList<>();
-		for (ItemStack stack : stacks)
-		{
-			if (AllowedDrops.firstProof(tiles, sourceName, stack.getId()) == null)
-			{
-				continue;
-			}
-			String label = itemLabel(stack.getId());
-			if (!labels.contains(label))
-			{
-				labels.add(label);
-			}
-		}
-		return labels;
-	}
-
-	private List<AllowedDrops.ProofTarget> matchedTargets(List<EventTile> tiles, String sourceName, Collection<ItemStack> stacks)
+	private List<AllowedDrops.ProofTarget> reserveProofs(List<EventTile> tiles, String sourceName, List<LootDrop> matched)
 	{
 		List<AllowedDrops.ProofTarget> targets = new ArrayList<>();
-		for (ItemStack stack : stacks)
+		for (LootDrop drop : matched)
 		{
-			AllowedDrops.ProofTarget target = AllowedDrops.firstProof(tiles, sourceName, stack.getId());
-			if (target != null)
-			{
-				targets.add(target);
-			}
-		}
-		return targets;
-	}
-
-	private List<AllowedDrops.ProofTarget> proofTargets(List<EventTile> tiles, String sourceName, Collection<ItemStack> stacks)
-	{
-		List<AllowedDrops.ProofTarget> targets = new ArrayList<>();
-		for (ItemStack stack : stacks)
-		{
-			AllowedDrops.ProofTarget target = AllowedDrops.firstProof(tiles, sourceName, stack.getId());
+			AllowedDrops.ProofTarget target = AllowedDrops.firstProof(tiles, sourceName, drop.itemId);
 			if (target == null)
 			{
 				continue;
 			}
 			target.item.pending++;
-			target.itemName = itemLabel(stack.getId());
+			target.itemName = drop.label;
 			targets.add(target);
+		}
+		return targets;
+	}
+
+	private static List<AllowedDrops.ProofTarget> dropsOf(List<LootDrop> matched)
+	{
+		List<AllowedDrops.ProofTarget> targets = new ArrayList<>(matched.size());
+		for (LootDrop drop : matched)
+		{
+			targets.add(drop.target);
 		}
 		return targets;
 	}
@@ -869,6 +840,20 @@ public class NylocasPlugin extends Plugin
 			return null;
 		}
 		return seen.count;
+	}
+
+	private static final class LootDrop
+	{
+		final int itemId;
+		final String label;
+		final AllowedDrops.ProofTarget target;
+
+		LootDrop(int itemId, String label, AllowedDrops.ProofTarget target)
+		{
+			this.itemId = itemId;
+			this.label = label;
+			this.target = target;
+		}
 	}
 
 	private static final class CompletionSeen
