@@ -7,21 +7,21 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-public class ProofMessagesTest
+public class ProofErrorsTest
 {
 	@Test
 	public void noLine()
 	{
-		assertNull(ProofMessages.line("event has not started"));
-		assertNull(ProofMessages.line("row is locked"));
-		assertFalse(ProofMessages.endsEvent("event has not started", false));
-		assertFalse(ProofMessages.endsEvent("row is locked", true));
+		assertNull(ProofErrors.line("event has not started"));
+		assertNull(ProofErrors.line("row is locked"));
+		assertFalse(ProofErrors.endsEvent("event has not started", false));
+		assertFalse(ProofErrors.endsEvent("row is locked", true));
 	}
 
 	@Test
 	public void finishedTile()
 	{
-		assertEquals(ProofMessages.TILE_COMPLETE, ProofMessages.line("tile complete"));
+		assertEquals(ProofErrors.TILE_COMPLETE, ProofErrors.line("tile complete"));
 	}
 
 	@Test
@@ -46,22 +46,22 @@ public class ProofMessagesTest
 		};
 		for (String error : errors)
 		{
-			assertEquals(error, ProofMessages.MANUAL, ProofMessages.line(error));
+			assertEquals(error, ProofErrors.MANUAL, ProofErrors.line(error));
 		}
 	}
 
 	@Test
 	public void rateLimit()
 	{
-		assertEquals(ProofMessages.RATE_LIMITED, ProofMessages.line("rate limited"));
+		assertEquals(ProofErrors.RATE_LIMITED, ProofErrors.line("rate limited"));
 	}
 
 	@Test
 	public void eventOver()
 	{
-		assertTrue(ProofMessages.endsEvent("event has ended", false));
-		assertTrue(ProofMessages.endsEvent("unauthorized", true));
-		assertFalse(ProofMessages.endsEvent("unauthorized", false));
-		assertNull(ProofMessages.line("event has ended"));
+		assertTrue(ProofErrors.endsEvent("event has ended", false));
+		assertTrue(ProofErrors.endsEvent("unauthorized", true));
+		assertFalse(ProofErrors.endsEvent("unauthorized", false));
+		assertNull(ProofErrors.line("event has ended"));
 	}
 }

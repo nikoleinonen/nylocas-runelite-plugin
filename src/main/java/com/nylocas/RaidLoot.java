@@ -1,15 +1,10 @@
 package com.nylocas;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-final class RaidSource
+final class RaidLoot
 {
 	private static final long CHAT_NAME_MAX_AGE_MS = 5 * 60 * 1000L;
 
-	private static final Pattern COMPLETED = Pattern.compile("Your (?:completed|subdued) (.+) count is: [\\d,]+\\b");
-
-	private RaidSource()
+	private RaidLoot()
 	{
 	}
 
@@ -27,21 +22,16 @@ final class RaidSource
 
 	static String fromKillCount(String message)
 	{
-		if (message == null)
+		CompletionCount count = CompletionCount.parseCompleted(message);
+		if (count == null)
 		{
 			return null;
 		}
-		Matcher matcher = COMPLETED.matcher(message);
-		if (!matcher.find())
+		if (count.name.startsWith("Chambers of Xeric")
+			|| count.name.startsWith("Theatre of Blood")
+			|| count.name.startsWith("Tombs of Amascut"))
 		{
-			return null;
-		}
-		String name = matcher.group(1).trim();
-		if (name.startsWith("Chambers of Xeric")
-			|| name.startsWith("Theatre of Blood")
-			|| name.startsWith("Tombs of Amascut"))
-		{
-			return name;
+			return count.name;
 		}
 		return null;
 	}

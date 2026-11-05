@@ -87,7 +87,7 @@ final class ProofCapture
 
 	void proofFailed()
 	{
-		postGameMessage(ColorUtil.wrapWithColorTag(ProofMessages.MANUAL, Color.RED));
+		postGameMessage(ColorUtil.wrapWithColorTag(ProofErrors.MANUAL, Color.RED));
 	}
 
 	void cancelUploads()
@@ -389,12 +389,12 @@ final class ProofCapture
 		{
 			error = "unauthorized";
 		}
-		if (ProofMessages.endsEvent(error, eventAfterEnd.getAsBoolean()))
+		if (ProofErrors.endsEvent(error, eventAfterEnd.getAsBoolean()))
 		{
 			onEventEnded.accept(session);
 			return;
 		}
-		String line = ProofMessages.line(error);
+		String line = ProofErrors.line(error);
 		if (line == null)
 		{
 			return;

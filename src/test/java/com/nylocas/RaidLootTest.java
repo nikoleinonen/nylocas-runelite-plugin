@@ -6,32 +6,32 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-public class RaidSourceTest
+public class RaidLootTest
 {
 	@Test
 	public void readsRaidCompletion()
 	{
-		assertEquals("Chambers of Xeric Challenge Mode", RaidSource.fromKillCount("Your completed Chambers of Xeric Challenge Mode count is: 12."));
-		assertEquals("Theatre of Blood: Hard Mode", RaidSource.fromKillCount("Your completed Theatre of Blood: Hard Mode count is: 1,024."));
-		assertEquals("Tombs of Amascut: Expert Mode", RaidSource.fromKillCount("Your completed Tombs of Amascut: Expert Mode count is: 3."));
-		assertEquals("Tombs of Amascut: Entry Mode", RaidSource.fromKillCount("Your completed Tombs of Amascut: Entry Mode count is: 2."));
+		assertEquals("Chambers of Xeric Challenge Mode", RaidLoot.fromKillCount("Your completed Chambers of Xeric Challenge Mode count is: 12."));
+		assertEquals("Theatre of Blood: Hard Mode", RaidLoot.fromKillCount("Your completed Theatre of Blood: Hard Mode count is: 1,024."));
+		assertEquals("Tombs of Amascut: Expert Mode", RaidLoot.fromKillCount("Your completed Tombs of Amascut: Expert Mode count is: 3."));
+		assertEquals("Tombs of Amascut: Entry Mode", RaidLoot.fromKillCount("Your completed Tombs of Amascut: Entry Mode count is: 2."));
 	}
 
 	@Test
 	public void ignoresOtherKillCounts()
 	{
-		assertNull(RaidSource.fromKillCount("Your Zulrah kill count is: 50."));
-		assertNull(RaidSource.fromKillCount("Completed allowed source: General Graardor, item: Rune platebody"));
-		assertNull(RaidSource.fromKillCount(null));
+		assertNull(RaidLoot.fromKillCount("Your Zulrah kill count is: 50."));
+		assertNull(RaidLoot.fromKillCount("Completed allowed source: General Graardor, item: Rune platebody"));
+		assertNull(RaidLoot.fromKillCount(null));
 	}
 
 	@Test
 	public void chestName()
 	{
-		assertNull(RaidSource.resolve("Chambers of Xeric", null));
-		assertEquals("Chambers of Xeric", RaidSource.resolve("Chambers of Xeric", "Chambers of Xeric"));
-		assertEquals("Chambers of Xeric Challenge Mode", RaidSource.resolve("Chambers of Xeric", "Chambers of Xeric Challenge Mode"));
-		assertEquals("Kree'arra", RaidSource.resolve("Kree'arra", "Chambers of Xeric"));
+		assertNull(RaidLoot.resolve("Chambers of Xeric", null));
+		assertEquals("Chambers of Xeric", RaidLoot.resolve("Chambers of Xeric", "Chambers of Xeric"));
+		assertEquals("Chambers of Xeric Challenge Mode", RaidLoot.resolve("Chambers of Xeric", "Chambers of Xeric Challenge Mode"));
+		assertEquals("Kree'arra", RaidLoot.resolve("Kree'arra", "Chambers of Xeric"));
 	}
 
 	@Test
@@ -40,7 +40,7 @@ public class RaidSourceTest
 		EventTile normal = raidTile("Chambers of Xeric");
 		EventTile challenge = raidTile("Chambers of Xeric Challenge Mode");
 		challenge.id = 2;
-		String source = RaidSource.resolve("Chambers of Xeric", "Chambers of Xeric Challenge Mode");
+		String source = RaidLoot.resolve("Chambers of Xeric", "Chambers of Xeric Challenge Mode");
 
 		assertNull(TileMatch.firstProof(List.of(normal), source, 20997));
 		assertEquals(2, TileMatch.firstProof(List.of(challenge), source, 20997).tile.id);
@@ -51,7 +51,7 @@ public class RaidSourceTest
 	{
 		EventTile normal = raidTile("Tombs of Amascut");
 		EventTile expert = raidTile("Tombs of Amascut: Expert Mode");
-		String source = RaidSource.resolve("Tombs of Amascut", "Tombs of Amascut: Entry Mode");
+		String source = RaidLoot.resolve("Tombs of Amascut", "Tombs of Amascut: Entry Mode");
 
 		assertNull(TileMatch.firstProof(List.of(normal, expert), source, 27277));
 	}

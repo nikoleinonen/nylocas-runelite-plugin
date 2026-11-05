@@ -562,7 +562,7 @@ public class NylocasPlugin extends Plugin
 			{
 				return;
 			}
-			chat(ProofMessages.EVENT_ENDED);
+			chat(ProofErrors.EVENT_ENDED);
 		});
 	}
 
@@ -657,7 +657,7 @@ public class NylocasPlugin extends Plugin
 		{
 			completionCounts.put(count.name.toLowerCase(Locale.ROOT), new CompletionSeen(count.count, System.currentTimeMillis()));
 		}
-		String sourceName = RaidSource.fromKillCount(message);
+		String sourceName = RaidLoot.fromKillCount(message);
 		if (sourceName == null)
 		{
 			return;
@@ -816,12 +816,12 @@ public class NylocasPlugin extends Plugin
 	private String lootSource(String lootName)
 	{
 		String chat = raidChatName;
-		if (chat != null && !RaidSource.chatNameIsRecent(raidChatAt))
+		if (chat != null && !RaidLoot.chatNameIsRecent(raidChatAt))
 		{
 			chat = null;
 		}
-		String source = RaidSource.resolve(lootName, chat);
-		if (RaidSource.isChest(lootName))
+		String source = RaidLoot.resolve(lootName, chat);
+		if (RaidLoot.isChest(lootName))
 		{
 			raidChatName = null;
 		}

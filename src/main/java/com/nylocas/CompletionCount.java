@@ -8,7 +8,7 @@ final class CompletionCount
 	private static final long MAX_AGE_MS = 3 * 60 * 1000L;
 
 	private static final Pattern KILL = Pattern.compile("Your (.+) kill count is: ([\\d,]+)\\b");
-	private static final Pattern COMPLETED = Pattern.compile("Your (?:completed|subdued) (.+) count is: ([\\d,]+)\\b");
+	private static final Pattern COMPLETED = Pattern.compile("Your completed (.+) count is: ([\\d,]+)\\b");
 
 	final String name;
 	final int count;
@@ -26,18 +26,29 @@ final class CompletionCount
 
 	static CompletionCount parse(String message)
 	{
+		CompletionCount kill = match(KILL, message);
+		if (kill != null)
+		{
+			return kill;
+		}
+		return parseCompleted(message);
+	}
+
+	static CompletionCount parseCompleted(String message)
+	{
+		return match(COMPLETED, message);
+	}
+
+	private static CompletionCount match(Pattern pattern, String message)
+	{
 		if (message == null)
 		{
 			return null;
 		}
-		Matcher matcher = KILL.matcher(message);
+		Matcher matcher = pattern.matcher(message);
 		if (!matcher.find())
 		{
-			matcher = COMPLETED.matcher(message);
-			if (!matcher.find())
-			{
-				return null;
-			}
+			return null;
 		}
 		String name = matcher.group(1).trim();
 		if (name.isEmpty())
