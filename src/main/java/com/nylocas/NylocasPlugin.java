@@ -85,7 +85,7 @@ public class NylocasPlugin extends Plugin
 	private volatile boolean running;
 	private EventBoardClient board;
 	private EventWebsocket websocket;
-	private ProofUploader proofs;
+	private ProofCapture proofs;
 	private DropAnnouncer drops;
 	private final AtomicInteger sessionGeneration = new AtomicInteger();
 	private volatile boolean proofsStopped;
@@ -118,7 +118,7 @@ public class NylocasPlugin extends Plugin
 		}
 		WebsocketFrames frames = new WebsocketFrames(config, () -> running, () -> panel, () -> board, this::chat, drops::consume);
 		websocket = new EventWebsocket(okHttpClient, gson, executor, this, frames, this::enemyFilters);
-		proofs = new ProofUploader(client, clientThread, drawManager, executor, okHttpClient, gson, this::sessionId, this::eventAfterEnd, this::onProofEventEnded);
+		proofs = new ProofCapture(client, clientThread, drawManager, executor, okHttpClient, gson, this::sessionId, this::eventAfterEnd, this::onProofEventEnded);
 		board.start();
 		proofs.start();
 		overlay = new EventCodeOverlay(config, this);
@@ -789,7 +789,7 @@ public class NylocasPlugin extends Plugin
 		return targets;
 	}
 
-	private ProofUploader.DiscordNotice discordNotice()
+	private ProofCapture.DiscordNotice discordNotice()
 	{
 		if (!config.sendDiscord())
 		{
@@ -801,7 +801,7 @@ public class NylocasPlugin extends Plugin
 			return null;
 		}
 		String player = localPlayerName();
-		return new ProofUploader.DiscordNotice(webhook, player, board.teamName());
+		return new ProofCapture.DiscordNotice(webhook, player, board.teamName());
 	}
 
 	private String localPlayerName()

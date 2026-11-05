@@ -38,7 +38,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 @Slf4j
-final class ProofUploader
+final class ProofCapture
 {
 	private static final DateTimeFormatter SHOT_STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss_SSS").withZone(ZoneId.systemDefault());
 	private static final int CHAT_VIEW_GAME = 1;
@@ -61,7 +61,7 @@ final class ProofUploader
 	private int openChatFrames;
 	private int savedChatView = -1;
 
-	ProofUploader(Client client, ClientThread clientThread, DrawManager drawManager, ScheduledExecutorService executor, OkHttpClient okHttpClient, Gson gson, IntSupplier sessionId, BooleanSupplier eventAfterEnd, IntConsumer onEventEnded)
+	ProofCapture(Client client, ClientThread clientThread, DrawManager drawManager, ScheduledExecutorService executor, OkHttpClient okHttpClient, Gson gson, IntSupplier sessionId, BooleanSupplier eventAfterEnd, IntConsumer onEventEnded)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
