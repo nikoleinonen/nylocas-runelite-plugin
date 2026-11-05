@@ -35,7 +35,7 @@ final class WebsocketFrames
 		if ("progress".equals(frame.type))
 		{
 			boolean complete = Boolean.TRUE.equals(frame.complete);
-			if (frame.approval && config.receiveOwn())
+			if (frame.approval && config.ownTeamApprovals())
 			{
 				chat.accept(NotificationText.approved(approvalTemplate(complete), teamName(), tileTitle(frame.tileId), accentColor(true), config.tileColor()));
 			}
@@ -100,7 +100,7 @@ final class WebsocketFrames
 		}
 		if ("rank".equals(frame.type))
 		{
-			if (config.receiveRank())
+			if (config.firstPlaceChanges())
 			{
 				boolean winner = Boolean.TRUE.equals(frame.winner);
 				chat.accept(NotificationText.rank(rankTemplate(frame.leader, winner), frame.leader, accentColor(ownLeader(frame.leader))));

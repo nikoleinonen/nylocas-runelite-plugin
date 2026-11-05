@@ -427,7 +427,7 @@ public class NylocasPlugin extends Plugin
 
 	private EventWebsocket.EnemyFilter enemyFilters()
 	{
-		return new EventWebsocket.EnemyFilter(config.receiveEnemy(), config.receiveEnemyRejections(), config.enemyEventDrop());
+		return new EventWebsocket.EnemyFilter(config.enemyTeamApprovals(), config.receiveEnemyRejections(), config.enemyEventDrop());
 	}
 
 	private void pushEnemyFilters()

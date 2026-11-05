@@ -16,7 +16,7 @@ public class WebsocketFramesTest
 		NylocasConfig config = new NylocasConfig()
 		{
 			@Override
-			public boolean receiveOwn()
+			public boolean ownTeamApprovals()
 			{
 				return true;
 			}
@@ -84,7 +84,7 @@ public class WebsocketFramesTest
 		NylocasConfig config = new NylocasConfig()
 		{
 			@Override
-			public boolean receiveRank()
+			public boolean firstPlaceChanges()
 			{
 				return true;
 			}

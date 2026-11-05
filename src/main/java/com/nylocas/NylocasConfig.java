@@ -164,7 +164,7 @@ public interface NylocasConfig extends Config
 		position = 0,
 		section = notificationsSection
 	)
-	default boolean receiveRank()
+	default boolean firstPlaceChanges()
 	{
 		return false;
 	}
@@ -188,7 +188,7 @@ public interface NylocasConfig extends Config
 		position = 2,
 		section = notificationsSection
 	)
-	default boolean receiveOwn()
+	default boolean ownTeamApprovals()
 	{
 		return false;
 	}
@@ -224,7 +224,7 @@ public interface NylocasConfig extends Config
 		position = 5,
 		section = notificationsSection
 	)
-	default boolean receiveEnemy()
+	default boolean enemyTeamApprovals()
 	{
 		return false;
 	}
