@@ -117,7 +117,7 @@ public class NylocasPlugin extends Plugin
 			drops = new DropAnnouncer(okHttpClient, gson);
 		}
 		WebsocketFrames frames = new WebsocketFrames(config, () -> running, () -> panel, () -> board, this::chat, drops::consume);
-		websocket = new EventWebsocket(okHttpClient, gson, executor, this, frames);
+		websocket = new EventWebsocket(okHttpClient, gson, executor, this, frames, this::enemyFilters);
 		proofs = new ProofUploader(client, clientThread, drawManager, executor, okHttpClient, gson, this::sessionId, this::eventAfterEnd, this::onProofEventEnded);
 		board.start();
 		proofs.start();
@@ -425,9 +425,9 @@ public class NylocasPlugin extends Plugin
 		}
 	}
 
-	void refreshEnemyFilters(EventWebsocket socket)
+	private EventWebsocket.EnemyFilter enemyFilters()
 	{
-		socket.useEnemyFilters(config.receiveEnemy(), config.receiveEnemyRejections(), config.enemyEventDrop());
+		return new EventWebsocket.EnemyFilter(config.receiveEnemy(), config.receiveEnemyRejections(), config.enemyEventDrop());
 	}
 
 	private void pushEnemyFilters()
@@ -436,7 +436,7 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		websocket.pushEnemyFilters(config.receiveEnemy(), config.receiveEnemyRejections(), config.enemyEventDrop());
+		websocket.pushEnemyFilters(enemyFilters());
 	}
 
 	private void scheduleRealtime()
@@ -518,7 +518,7 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		websocket.open(teamKey(), true, true, config.receiveEnemy(), config.receiveEnemyRejections(), config.enemyEventDrop(), event.startsAt, event.endsAt);
+		websocket.open(teamKey(), event.startsAt, event.endsAt);
 	}
 
 	private void onLocalEventEnd(int ticket)

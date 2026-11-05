@@ -5,6 +5,7 @@ import com.google.gson.annotations.SerializedName;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.function.Supplier;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import javax.swing.SwingUtilities;
@@ -20,18 +21,21 @@ final class EventWebsocket
 {
 	private static final int[] BACKOFF_SECONDS = {1, 2, 4, 8, 16, 32, 60};
 
+	// Own-team progress and the current place update the board even when those chat messages are off.
+	private static final boolean RANK = true;
+	private static final boolean OWN = true;
+
 	private final OkHttpClient http;
 	private final Gson gson;
 	private final ScheduledExecutorService executor;
 	private final NylocasPlugin plugin;
 	private final WebsocketFrames frames;
+	private final Supplier<EnemyFilter> enemyFilters;
 
 	private volatile int generation;
 	private volatile boolean stopped = true;
 	private int step;
 	private String key = "";
-	private boolean rank;
-	private boolean own;
 	private boolean enemy;
 	private boolean enemyReject;
 	private boolean enemyDrop;
@@ -41,7 +45,7 @@ final class EventWebsocket
 	private ScheduledFuture<?> pending;
 	private WebSocket socket;
 
-	EventWebsocket(OkHttpClient http, Gson gson, ScheduledExecutorService executor, NylocasPlugin plugin, WebsocketFrames frames)
+	EventWebsocket(OkHttpClient http, Gson gson, ScheduledExecutorService executor, NylocasPlugin plugin, WebsocketFrames frames, Supplier<EnemyFilter> enemyFilters)
 	{
 		this.http = http.newBuilder()
 			.pingInterval(60, TimeUnit.SECONDS)
@@ -51,6 +55,7 @@ final class EventWebsocket
 		this.executor = executor;
 		this.plugin = plugin;
 		this.frames = frames;
+		this.enemyFilters = enemyFilters;
 	}
 
 	static String filterText(boolean enemy, boolean enemyReject, boolean enemyDrop)
@@ -60,21 +65,16 @@ final class EventWebsocket
 			+ ",\"enemy_drop\":" + (enemyDrop ? 1 : 0) + "}";
 	}
 
-	void open(String teamKey, boolean rank, boolean own, boolean enemy, boolean enemyReject, boolean enemyDrop, String startsAt, String endsAt)
+	void open(String teamKey, String startsAt, String endsAt)
 	{
 		stop();
-		if (teamKey == null || teamKey.isEmpty() || (!rank && !own && !enemy && !enemyReject && !enemyDrop))
+		if (teamKey == null || teamKey.isEmpty())
 		{
 			return;
 		}
 		this.stopped = false;
 		this.step = 0;
 		this.key = teamKey;
-		this.rank = rank;
-		this.own = own;
-		this.enemy = enemy;
-		this.enemyReject = enemyReject;
-		this.enemyDrop = enemyDrop;
 		this.startsAt = EventClock.parse(startsAt);
 		this.endsAt = EventClock.parse(endsAt);
 		if (this.endsAt == null || !Instant.now().isBefore(this.endsAt))
@@ -102,25 +102,19 @@ final class EventWebsocket
 		return !stopped;
 	}
 
-	void useEnemyFilters(boolean enemy, boolean enemyReject, boolean enemyDrop)
+	void pushEnemyFilters(EnemyFilter next)
 	{
-		synchronized (this)
+		if (next == null)
 		{
-			this.enemy = enemy;
-			this.enemyReject = enemyReject;
-			this.enemyDrop = enemyDrop;
+			return;
 		}
-	}
-
-	void pushEnemyFilters(boolean enemy, boolean enemyReject, boolean enemyDrop)
-	{
 		WebSocket current;
 		synchronized (this)
 		{
-			boolean changed = this.enemy != enemy || this.enemyReject != enemyReject || this.enemyDrop != enemyDrop;
-			this.enemy = enemy;
-			this.enemyReject = enemyReject;
-			this.enemyDrop = enemyDrop;
+			boolean changed = this.enemy != next.enemy || this.enemyReject != next.enemyReject || this.enemyDrop != next.enemyDrop;
+			this.enemy = next.enemy;
+			this.enemyReject = next.enemyReject;
+			this.enemyDrop = next.enemyDrop;
 			if (!changed || stopped)
 			{
 				return;
@@ -133,7 +127,7 @@ final class EventWebsocket
 			}
 			filtersDirty = false;
 		}
-		current.send(filterText(enemy, enemyReject, enemyDrop));
+		current.send(filterText(next.enemy, next.enemyReject, next.enemyDrop));
 	}
 
 	void stop()
@@ -190,10 +184,10 @@ final class EventWebsocket
 		String address;
 		synchronized (this)
 		{
-			plugin.refreshEnemyFilters(this);
+			applyEnemyFilters(enemyFilters.get());
 			filtersDirty = false;
 			ticket = generation;
-			address = NylocasUrls.websocket(NylocasUrls.hashKey(key), rank, own, enemy, enemyReject, enemyDrop);
+			address = NylocasUrls.websocket(NylocasUrls.hashKey(key), RANK, OWN, enemy, enemyReject, enemyDrop);
 		}
 		Request request = new Request.Builder().url(address).build();
 		WebSocket opened = http.newWebSocket(request, new WebSocketListener()
@@ -317,6 +311,17 @@ final class EventWebsocket
 		}
 	}
 
+	private void applyEnemyFilters(EnemyFilter next)
+	{
+		if (next == null)
+		{
+			return;
+		}
+		enemy = next.enemy;
+		enemyReject = next.enemyReject;
+		enemyDrop = next.enemyDrop;
+	}
+
 	private void sendFiltersIfDirty()
 	{
 		WebSocket current;
@@ -411,6 +416,20 @@ final class EventWebsocket
 		catch (NumberFormatException ex)
 		{
 			return 60;
+		}
+	}
+
+	static final class EnemyFilter
+	{
+		final boolean enemy;
+		final boolean enemyReject;
+		final boolean enemyDrop;
+
+		EnemyFilter(boolean enemy, boolean enemyReject, boolean enemyDrop)
+		{
+			this.enemy = enemy;
+			this.enemyReject = enemyReject;
+			this.enemyDrop = enemyDrop;
 		}
 	}
 
