@@ -63,7 +63,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = CONNECT_WEBSOCKET,
 		name = "Enable real-time updates",
-		description = "Keep your team's board up to date while the session is connected. This setting also allows you to get notifications of various things listed under 'Notifications' section. To get automatic updates on event code, this must be enabled.",
+		description = "Keep your team's board up to date while the session is connected. This also delivers the chat notifications in the Notifications section.",
 		position = 1,
 		section = eventSection
 	)
@@ -75,7 +75,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "autoConnect",
 		name = "Auto-connect/fetch event upon login",
-		description = "Upon loggin in, connect or fetch the event automatically. 'Enable real-time updates' determines if you connect or only fetch it once.",
+		description = "Upon logging in, connect or fetch the event automatically. 'Enable real-time updates' determines whether you stay connected or only fetch it once.",
 		position = 2,
 		section = eventSection
 	)
@@ -100,7 +100,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "submitProofs",
 		name = "Auto submit",
-		description = "Automatically send a screenshot when you get a drop for an event tile. It is still recommended you take a screenshot yourself just in case.",
+		description = "Automatically send a screenshot when you get a drop for an event tile. Take one yourself as well, in case the automatic one fails or the automatic proof is invalid.",
 		position = 0,
 		section = submissionsSection
 	)
@@ -124,7 +124,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "sendDiscord",
 		name = "Send drop to Discord",
-		description = "Screenshot a screenshot to event's Discord webhook. Nothing is sent when the organizer has not enabled discord images.",
+		description = "Send a screenshot to the event's Discord webhook. Nothing is sent if the organizer has not set a Discord webhook.",
 		position = 2,
 		section = submissionsSection
 	)
@@ -136,7 +136,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "hidePrivateMessages",
 		name = "Hide private messages",
-		description = "Hide private messages for a frame when taking a screenshot. Split friends private chat must be enabled in the game settings, or those messages stay in the chat box. Or if you also enable 'Open chat automatically', those wont showup either.",
+		description = "Hide private messages for the screenshot. Split private chat must be enabled in the game's chat settings, or those messages stay in the chat box. If you also enable 'Open game chat automatically', split private chat is not 'required'.",
 		position = 3,
 		section = submissionsSection
 	)
@@ -147,8 +147,8 @@ public interface NylocasConfig extends Config
 
 	@ConfigItem(
 		keyName = "openChat",
-		name = "Open chat automatically",
-		description = "Open game chat for a frame when taking a screenshot. The drop 'hopefully' is visible in the chat.",
+		name = "Open game chat automatically",
+		description = "Open game chat for the screenshot. If you play with the chat box hidden, turn this on before enabling 'Auto submit'. Otherwise the screenshot is taken with the chat still closed.",
 		position = 4,
 		section = submissionsSection
 	)
@@ -316,7 +316,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "eventCode",
 		name = "Event code",
-		description = "Used when the loaded event has no code. A code from the event replaces this. For this to update in real-time, 'Enable real-time updates' must be enabled. (If the organizer changes it mid event)",
+		description = "Used when the loaded event has no code. A code from the event replaces this. For this to update in real time if the organizer changes it mid-event, 'Enable real-time updates' must be enabled.",
 		position = 1,
 		section = overlaySection
 	)
