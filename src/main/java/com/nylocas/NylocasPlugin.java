@@ -1,12 +1,10 @@
 package com.nylocas;
 
 import com.google.gson.Gson;
-import com.google.gson.annotations.SerializedName;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.time.Instant;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -14,7 +12,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -43,13 +40,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.Filepath;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
 
 @Slf4j
 @PluginDescriptor(
@@ -96,6 +87,7 @@ public class NylocasPlugin extends Plugin
 	private EventBoardClient board;
 	private EventWebsocket websocket;
 	private ProofUploader proofs;
+	private DropAnnouncer drops;
 	private final AtomicInteger sessionGeneration = new AtomicInteger();
 	private volatile boolean proofsStopped;
 	private volatile ScheduledFuture<?> eventEndTask;
@@ -105,9 +97,6 @@ public class NylocasPlugin extends Plugin
 	private String raidChatName;
 	private long raidChatAt;
 	private final Map<String, CompletionSeen> completionCounts = new HashMap<>();
-	private final ArrayDeque<Long> announcedDrops = new ArrayDeque<>();
-	private static final int ANNOUNCED_DROP_CAP = 32;
-	private static final MediaType DROP_JSON = MediaType.parse("application/json");
 	private boolean loggingIn;
 	private boolean awaitLogin;
 	private volatile boolean loginScreen;
@@ -124,7 +113,11 @@ public class NylocasPlugin extends Plugin
 		running = true;
 		loginScreen = client.getGameState() == GameState.LOGIN_SCREEN;
 		board = new EventBoardClient(okHttpClient, gson, clientThread, itemManager, this::localPlayerName);
-		WebsocketFrames frames = new WebsocketFrames(config, () -> running, () -> panel, () -> board, this::chat, this::consumeAnnounce);
+		if (drops == null)
+		{
+			drops = new DropAnnouncer(okHttpClient, gson);
+		}
+		WebsocketFrames frames = new WebsocketFrames(config, () -> running, () -> panel, () -> board, this::chat, drops::consume);
 		websocket = new EventWebsocket(okHttpClient, gson, executor, this, frames);
 		proofs = new ProofUploader(client, clientThread, drawManager, executor, okHttpClient, gson, this::sessionId, this::eventAfterEnd, this::onProofEventEnded);
 		board.start();
@@ -393,7 +386,10 @@ public class NylocasPlugin extends Plugin
 		{
 			proofs.cancelUploads();
 		}
-		clearAnnounced();
+		if (drops != null)
+		{
+			drops.clear();
+		}
 		if (websocket != null)
 		{
 			websocket.stop();
@@ -726,7 +722,7 @@ public class NylocasPlugin extends Plugin
 			List<AllowedDrops.ProofTarget> announced = uploadProofs ? targets : matchedTargets(tiles, sourceName, lootReceived.getItems());
 			for (AllowedDrops.ProofTarget target : announced)
 			{
-				announceDrop(target, proofPlayerId, proofKey);
+				drops.announce(target, proofPlayerId, proofKey);
 			}
 		}
 		if (!saveLocally && !uploadProofs)
@@ -805,95 +801,6 @@ public class NylocasPlugin extends Plugin
 		return targets;
 	}
 
-	private void announceDrop(AllowedDrops.ProofTarget target, long playerId, String key)
-	{
-		if (target == null || target.tile == null || target.item == null || target.item.key == null || target.item.key.isEmpty() || target.sourceId == null || target.sourceId.isEmpty())
-		{
-			return;
-		}
-		long id = ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE);
-		rememberAnnounce(id);
-		DropRequest request = new DropRequest();
-		request.tileId = target.tile.id;
-		request.playerId = playerId;
-		request.item = target.item.key;
-		request.source = target.sourceId;
-		request.id = id;
-		RequestBody body = RequestBody.create(DROP_JSON, gson.toJson(request));
-		Request call = new Request.Builder()
-			.url(NylocasUrls.API + "/plugin/drop")
-			.header("Authorization", "Bearer " + key)
-			.post(body)
-			.build();
-		okHttpClient.newCall(call).enqueue(new Callback()
-		{
-			@Override
-			public void onFailure(Call ignored, IOException error)
-			{
-				log.debug("Drop announce failed", error);
-				forgetAnnounce(id);
-			}
-
-			@Override
-			public void onResponse(Call ignored, Response response)
-			{
-				try
-				{
-					if (response.isSuccessful())
-					{
-						return;
-					}
-					log.debug("Drop announce rejected {}", response.code());
-					forgetAnnounce(id);
-				}
-				finally
-				{
-					response.close();
-				}
-			}
-		});
-	}
-
-	private void rememberAnnounce(long id)
-	{
-		synchronized (announcedDrops)
-		{
-			announcedDrops.addLast(id);
-			while (announcedDrops.size() > ANNOUNCED_DROP_CAP)
-			{
-				announcedDrops.removeFirst();
-			}
-		}
-	}
-
-	private boolean consumeAnnounce(long id)
-	{
-		if (id <= 0)
-		{
-			return false;
-		}
-		synchronized (announcedDrops)
-		{
-			return announcedDrops.remove(id);
-		}
-	}
-
-	private void forgetAnnounce(long id)
-	{
-		synchronized (announcedDrops)
-		{
-			announcedDrops.remove(id);
-		}
-	}
-
-	private void clearAnnounced()
-	{
-		synchronized (announcedDrops)
-		{
-			announcedDrops.clear();
-		}
-	}
-
 	private List<AllowedDrops.ProofTarget> proofTargets(List<EventTile> tiles, String sourceName, Collection<ItemStack> stacks)
 	{
 		List<AllowedDrops.ProofTarget> targets = new ArrayList<>();
@@ -962,19 +869,6 @@ public class NylocasPlugin extends Plugin
 			return null;
 		}
 		return seen.count;
-	}
-
-	private static final class DropRequest
-	{
-		@SerializedName("tile_id")
-		long tileId;
-
-		@SerializedName("player_id")
-		long playerId;
-
-		String item;
-		String source;
-		long id;
 	}
 
 	private static final class CompletionSeen
