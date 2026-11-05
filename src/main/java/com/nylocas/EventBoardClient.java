@@ -242,7 +242,7 @@ final class EventBoardClient
 		{
 			return;
 		}
-		loadPictures(next, ticket, imagesByUrl -> showLoaded(panel, board, next, imagesByUrl, ticket, reopen, rowTicket));
+		loadTileImages(next, ticket, imagesByUrl -> showLoaded(panel, board, next, imagesByUrl, ticket, reopen, rowTicket));
 	}
 
 	List<EventTile> tiles()
@@ -401,7 +401,7 @@ final class EventBoardClient
 		deliver(panel, board, ticket, true, 0);
 	}
 
-	private void loadPictures(List<EventTile> boardTiles, int ticket, Consumer<Map<String, BufferedImage>> done)
+	private void loadTileImages(List<EventTile> boardTiles, int ticket, Consumer<Map<String, BufferedImage>> done)
 	{
 		if (!running || ticket != generation.get())
 		{
@@ -411,13 +411,13 @@ final class EventBoardClient
 		Set<String> urls = new LinkedHashSet<>();
 		for (EventTile tile : boardTiles)
 		{
-			String primary = TileIcons.imageUrl(tile);
-			if (TileIcons.allowed(primary))
+			String primary = TileImages.imageUrl(tile);
+			if (TileImages.allowed(primary))
 			{
 				urls.add(primary);
 			}
-			String catalog = TileIcons.catalogIconUrl(tile);
-			if (catalog != null && !catalog.equals(primary) && TileIcons.allowed(catalog))
+			String catalog = TileImages.catalogIconUrl(tile);
+			if (catalog != null && !catalog.equals(primary) && TileImages.allowed(catalog))
 			{
 				urls.add(catalog);
 			}
@@ -521,7 +521,7 @@ final class EventBoardClient
 			}
 			Map<Integer, String> names = new HashMap<>();
 			Map<Integer, AsyncBufferedImage> images = new HashMap<>();
-			Map<Long, TileIcons.Picture> pictures = picturesFor(boardTiles, imagesByUrl);
+			Map<Long, TileImages.Image> tileImages = tileImagesFor(boardTiles, imagesByUrl);
 			for (EventTile tile : boardTiles)
 			{
 				if (tile.items != null)
@@ -554,21 +554,21 @@ final class EventBoardClient
 						}
 					}
 				}
-				if (pictures.containsKey(tile.id))
+				if (tileImages.containsKey(tile.id))
 				{
 					continue;
 				}
-				Integer id = TileIcons.runeLiteId(tile);
+				Integer id = TileImages.runeLiteId(tile);
 				if (id == null)
 				{
 					continue;
 				}
 				try
 				{
-					TileIcons.Picture picture = TileIcons.picture(tile, itemManager.getImage(id), true);
-					if (picture != null)
+					TileImages.Image tileImage = TileImages.image(tile, itemManager.getImage(id), true);
+					if (tileImage != null)
 					{
-						pictures.put(tile.id, picture);
+						tileImages.put(tile.id, tileImage);
 					}
 				}
 				catch (RuntimeException ex)
@@ -576,16 +576,16 @@ final class EventBoardClient
 					log.debug("Item image {}", id, ex);
 				}
 			}
-			SwingUtilities.invokeLater(() -> panel.showBoard(loaded, names, images, pictures, reopen, rowTicket));
+			SwingUtilities.invokeLater(() -> panel.showBoard(loaded, names, images, tileImages, reopen, rowTicket));
 		});
 	}
 
-	private static Map<Long, TileIcons.Picture> picturesFor(List<EventTile> boardTiles, Map<String, BufferedImage> images)
+	private static Map<Long, TileImages.Image> tileImagesFor(List<EventTile> boardTiles, Map<String, BufferedImage> images)
 	{
-		Map<Long, TileIcons.Picture> pictures = new HashMap<>();
+		Map<Long, TileImages.Image> tileImages = new HashMap<>();
 		if (images == null)
 		{
-			return pictures;
+			return tileImages;
 		}
 		for (EventTile tile : boardTiles)
 		{
@@ -593,25 +593,25 @@ final class EventBoardClient
 			{
 				continue;
 			}
-			String primary = TileIcons.imageUrl(tile);
+			String primary = TileImages.imageUrl(tile);
 			BufferedImage image = primary == null ? null : images.get(primary);
 			boolean catalog = false;
 			if (image == null)
 			{
-				String fallback = TileIcons.catalogIconUrl(tile);
+				String fallback = TileImages.catalogIconUrl(tile);
 				if (fallback != null && !fallback.equals(primary))
 				{
 					image = images.get(fallback);
 					catalog = image != null;
 				}
 			}
-			TileIcons.Picture picture = TileIcons.picture(tile, image, catalog);
-			if (picture != null)
+			TileImages.Image tileImage = TileImages.image(tile, image, catalog);
+			if (tileImage != null)
 			{
-				pictures.put(tile.id, picture);
+				tileImages.put(tile.id, tileImage);
 			}
 		}
-		return pictures;
+		return tileImages;
 	}
 
 	private void finishImage(Call call, CompletableFuture<Void> job)
@@ -639,7 +639,7 @@ final class EventBoardClient
 
 	private static BufferedImage readImage(Response response) throws IOException
 	{
-		if (!response.isSuccessful() || response.body() == null || !TileIcons.allowed(response.request().url().toString()))
+		if (!response.isSuccessful() || response.body() == null || !TileImages.allowed(response.request().url().toString()))
 		{
 			return null;
 		}

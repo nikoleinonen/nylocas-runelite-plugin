@@ -93,7 +93,7 @@ final class EventPanel extends PluginPanel
 	private boolean refreshingRow;
 	private Map<Integer, String> itemNames = Map.of();
 	private Map<Integer, AsyncBufferedImage> itemImages = Map.of();
-	private Map<Long, TileIcons.Picture> pictures = Map.of();
+	private Map<Long, TileImages.Image> tileImages = Map.of();
 	private JPanel selectedCell;
 	private BufferedImage lockedIcon;
 	private boolean fetching;
@@ -550,7 +550,7 @@ final class EventPanel extends PluginPanel
 		revalidate();
 	}
 
-	void showBoard(EventBoard board, Map<Integer, String> names, Map<Integer, AsyncBufferedImage> images, Map<Long, TileIcons.Picture> tilePictures, boolean reopenSocket, int rowTicket)
+	void showBoard(EventBoard board, Map<Integer, String> names, Map<Integer, AsyncBufferedImage> images, Map<Long, TileImages.Image> tileImages, boolean reopenSocket, int rowTicket)
 	{
 		if (stopped || !acceptBoard || (!reopenSocket && rowTicket != this.rowTicket))
 		{
@@ -566,7 +566,7 @@ final class EventPanel extends PluginPanel
 		showRank(board);
 		itemNames = names == null ? Map.of() : names;
 		itemImages = images == null ? Map.of() : images;
-		pictures = tilePictures == null ? Map.of() : tilePictures;
+		this.tileImages = tileImages == null ? Map.of() : tileImages;
 		knownTiles.clear();
 		if (board != null && board.tiles != null)
 		{
@@ -744,7 +744,7 @@ final class EventPanel extends PluginPanel
 		String tip = tileTooltip(tile);
 		cell.setToolTipText(tip);
 		TileFace face = new TileFace();
-		face.show(pictures.get(tile.id));
+		face.show(tileImages.get(tile.id));
 		face.setToolTipText(tip);
 		cell.add(face);
 		cells.put(cell, tile);
@@ -834,7 +834,7 @@ final class EventPanel extends PluginPanel
 		refreshingRow = false;
 		itemNames = Map.of();
 		itemImages = Map.of();
-		pictures = Map.of();
+		tileImages = Map.of();
 		gridHost.removeAll();
 		detail.removeAll();
 		gridHost.revalidate();

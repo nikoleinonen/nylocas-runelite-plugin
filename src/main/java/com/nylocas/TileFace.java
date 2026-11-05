@@ -20,18 +20,18 @@ final class TileFace extends JComponent
 		setOpaque(false);
 	}
 
-	void show(TileIcons.Picture picture)
+	void show(TileImages.Image tileImage)
 	{
-		if (picture == null)
+		if (tileImage == null)
 		{
 			image = null;
 			count = null;
 			return;
 		}
-		image = picture.image;
-		cover = picture.cover;
-		sharp = picture.sharp;
-		count = picture.count;
+		image = tileImage.image;
+		cover = tileImage.cover;
+		sharp = tileImage.sharp;
+		count = tileImage.count;
 		if (image instanceof AsyncBufferedImage)
 		{
 			((AsyncBufferedImage) image).onLoaded(this::repaint);
@@ -116,7 +116,7 @@ final class TileFace extends JComponent
 	{
 		int size = Math.max(8, Math.min(11, height / 3));
 		g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, size));
-		String text = TileIcons.formatCount(count);
+		String text = TileImages.formatCount(count);
 		int x = 2;
 		int y = size;
 		if (g.getFontMetrics().stringWidth(text) > width - 2)
@@ -125,7 +125,7 @@ final class TileFace extends JComponent
 		}
 		g.setColor(java.awt.Color.BLACK);
 		g.drawString(text, x + 1, y + 1);
-		g.setColor(TileIcons.countColor(count));
+		g.setColor(TileImages.countColor(count));
 		g.drawString(text, x, y);
 	}
 }

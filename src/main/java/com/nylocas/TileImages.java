@@ -1,21 +1,20 @@
 package com.nylocas;
 
 import java.awt.Color;
-import java.awt.Image;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
-final class TileIcons
+final class TileImages
 {
-	static final class Picture
+	static final class Image
 	{
-		final Image image;
+		final java.awt.Image image;
 		final boolean cover;
 		final boolean sharp;
 		final Integer count;
 
-		Picture(Image image, boolean cover, boolean sharp, Integer count)
+		Image(java.awt.Image image, boolean cover, boolean sharp, Integer count)
 		{
 			this.image = image;
 			this.cover = cover;
@@ -29,7 +28,7 @@ final class TileIcons
 	private static final Pattern ITEM_ICON = Pattern.compile(Pattern.quote(NylocasUrls.ITEM_ICONS) + "[a-z0-9][a-z0-9_-]{0,63}\\.png");
 	private static final Pattern TILE_IMAGE = Pattern.compile(Pattern.quote(NylocasUrls.TILE_IMAGES) + "[A-Za-z0-9_-]+\\.(?:png|gif|jpg|webp)");
 
-	private TileIcons()
+	private TileImages()
 	{
 	}
 
@@ -123,7 +122,7 @@ final class TileIcons
 		return fallback == null ? null : firstId(fallback.runeliteIds);
 	}
 
-	static Picture picture(EventTile tile, Image image, boolean catalog)
+	static Image image(EventTile tile, java.awt.Image image, boolean catalog)
 	{
 		if (tile == null || image == null)
 		{
@@ -131,7 +130,7 @@ final class TileIcons
 		}
 		boolean cover = !catalog && covers(tile);
 		boolean sharp = !cover && (catalog || !customIcon(tile));
-		return new Picture(image, cover, sharp, cover ? null : count(tile));
+		return new Image(image, cover, sharp, cover ? null : count(tile));
 	}
 
 	private static String itemIconUrl(String key)
