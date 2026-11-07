@@ -11,6 +11,10 @@ final class EventItem
 	int count;
 	int approved;
 	int pending;
+	// Proofs reserved on this client, on top of the server's approved and pending.
+	transient int reserved;
+	transient int acked;
+	transient int holdBase;
 
 	@SerializedName("runelite_ids")
 	List<Integer> runeliteIds;

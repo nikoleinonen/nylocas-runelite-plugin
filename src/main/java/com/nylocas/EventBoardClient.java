@@ -74,6 +74,42 @@ final class EventBoardClient
 
 	void noteProgress(long tileId, String itemKey, int approved, int pending, boolean complete)
 	{
+		int ticket = generation.get();
+		clientThread.invoke(() ->
+		{
+			if (!running || ticket != generation.get())
+			{
+				return;
+			}
+			applyServerProgress(tiles, tileId, itemKey, approved, pending, complete);
+		});
+	}
+
+	void releaseReservation(long tileId, String itemKey)
+	{
+		clientThread.invoke(() -> releaseHold(tiles, tileId, itemKey));
+	}
+
+	void acknowledgeReservation(long tileId, String itemKey)
+	{
+		clientThread.invoke(() -> acknowledgeHold(tiles, tileId, itemKey));
+	}
+
+	static void hold(EventItem item)
+	{
+		if (item == null)
+		{
+			return;
+		}
+		if (item.reserved == 0)
+		{
+			item.holdBase = item.approved + item.pending;
+		}
+		item.reserved++;
+	}
+
+	static void applyServerProgress(List<EventTile> tiles, long tileId, String itemKey, int approved, int pending, boolean complete)
+	{
 		for (EventTile tile : tiles)
 		{
 			if (tile == null || tile.id != tileId)
@@ -86,6 +122,7 @@ final class EventBoardClient
 				{
 					if (item != null && itemKey != null && itemKey.equals(item.key))
 					{
+						retireAcked(item, approved + pending);
 						item.approved = approved;
 						item.pending = pending;
 					}
@@ -95,6 +132,152 @@ final class EventBoardClient
 			tile.partial = !complete && hasApproved(tile);
 			return;
 		}
+	}
+
+	static boolean releaseHold(List<EventTile> tiles, long tileId, String itemKey)
+	{
+		EventItem item = heldItem(tiles, tileId, itemKey);
+		if (item == null || item.reserved <= item.acked)
+		{
+			return false;
+		}
+		item.reserved--;
+		if (item.reserved == 0)
+		{
+			item.acked = 0;
+			item.holdBase = 0;
+		}
+		return true;
+	}
+
+	static void acknowledgeHold(List<EventTile> tiles, long tileId, String itemKey)
+	{
+		EventItem item = heldItem(tiles, tileId, itemKey);
+		if (item == null || item.reserved <= item.acked)
+		{
+			return;
+		}
+		item.acked++;
+		retireAcked(item, item.approved + item.pending);
+	}
+
+	static void carryReservations(List<EventTile> from, List<EventTile> to)
+	{
+		if (from == null || to == null)
+		{
+			return;
+		}
+		Map<Long, Map<String, EventItem>> held = new HashMap<>();
+		for (EventTile tile : from)
+		{
+			if (tile == null || tile.items == null)
+			{
+				continue;
+			}
+			for (EventItem item : tile.items)
+			{
+				if (item == null || item.key == null || item.reserved <= 0)
+				{
+					continue;
+				}
+				Map<String, EventItem> items = held.computeIfAbsent(tile.id, id -> new HashMap<>());
+				EventItem existing = items.get(item.key);
+				if (existing == null)
+				{
+					EventItem copy = new EventItem();
+					copy.reserved = item.reserved;
+					copy.acked = item.acked;
+					copy.holdBase = item.holdBase;
+					items.put(item.key, copy);
+					continue;
+				}
+				existing.reserved += item.reserved;
+				existing.acked += item.acked;
+				existing.holdBase = Math.max(existing.holdBase, item.holdBase);
+			}
+		}
+		for (EventTile tile : to)
+		{
+			if (tile == null || tile.items == null)
+			{
+				continue;
+			}
+			Map<String, EventItem> items = held.get(tile.id);
+			if (items == null)
+			{
+				continue;
+			}
+			for (EventItem item : tile.items)
+			{
+				if (item == null || item.key == null)
+				{
+					continue;
+				}
+				EventItem carry = items.remove(item.key);
+				if (carry == null)
+				{
+					continue;
+				}
+				item.reserved = carry.reserved;
+				item.acked = carry.acked;
+				item.holdBase = carry.holdBase;
+				retireAcked(item, item.approved + item.pending);
+			}
+		}
+	}
+
+	private static EventItem heldItem(List<EventTile> tiles, long tileId, String itemKey)
+	{
+		if (tiles == null || itemKey == null)
+		{
+			return null;
+		}
+		EventItem first = null;
+		for (EventTile tile : tiles)
+		{
+			if (tile == null || tile.id != tileId || tile.items == null)
+			{
+				continue;
+			}
+			for (EventItem item : tile.items)
+			{
+				if (item == null || !itemKey.equals(item.key))
+				{
+					continue;
+				}
+				if (first == null)
+				{
+					first = item;
+				}
+				if (item.reserved > item.acked)
+				{
+					return item;
+				}
+			}
+		}
+		return first;
+	}
+
+	// An upload that already succeeded stays reserved until the server total grows past the total at reserve time.
+	private static void retireAcked(EventItem item, int serverSum)
+	{
+		if (item.acked <= 0 || serverSum <= item.holdBase)
+		{
+			return;
+		}
+		int retire = Math.min(item.acked, serverSum - item.holdBase);
+		item.acked -= retire;
+		item.reserved -= retire;
+		if (item.reserved < item.acked)
+		{
+			item.reserved = item.acked;
+		}
+		if (item.reserved < 0)
+		{
+			item.reserved = 0;
+			item.acked = 0;
+		}
+		item.holdBase = serverSum;
 	}
 
 	private static boolean hasApproved(EventTile tile)
@@ -227,8 +410,8 @@ final class EventBoardClient
 		{
 			return;
 		}
-		// The panel keeps the fetched tiles. Proof reservations stay on this copy until the next refresh.
-		tiles = copyTiles(next);
+		// The panel keeps the fetched tiles. Proof holds are copied onto the matcher list on the client thread.
+		clientThread.invoke(() -> installTiles(next, ticket));
 		players = copyPlayers(board);
 		eventName = board == null || board.eventName == null ? "" : board.eventName;
 		teamName = board == null || board.teamName == null ? "" : board.teamName;
@@ -243,6 +426,17 @@ final class EventBoardClient
 			return;
 		}
 		loadTileImages(next, ticket, imagesByUrl -> showLoaded(panel, board, next, imagesByUrl, ticket, reopen, rowTicket));
+	}
+
+	private void installTiles(List<EventTile> fetched, int ticket)
+	{
+		if (!running || ticket != generation.get() || fetched == null)
+		{
+			return;
+		}
+		List<EventTile> installed = copyTiles(fetched);
+		carryReservations(tiles, installed);
+		tiles = installed;
 	}
 
 	List<EventTile> tiles()

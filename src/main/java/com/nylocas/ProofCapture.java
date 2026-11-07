@@ -59,13 +59,14 @@ final class ProofCapture
 	private final IntSupplier sessionId;
 	private final BooleanSupplier eventAfterEnd;
 	private final IntConsumer onEventEnded;
+	private final Holds holds;
 	private final List<Call> proofCalls = new ArrayList<>();
 	private volatile boolean running;
 	private boolean privateChatHidden;
 	private int openChatFrames;
 	private int savedChatView = -1;
 
-	ProofCapture(Client client, ClientThread clientThread, DrawManager drawManager, ScheduledExecutorService executor, OkHttpClient okHttpClient, Gson gson, IntSupplier sessionId, BooleanSupplier eventAfterEnd, IntConsumer onEventEnded)
+	ProofCapture(Client client, ClientThread clientThread, DrawManager drawManager, ScheduledExecutorService executor, OkHttpClient okHttpClient, Gson gson, IntSupplier sessionId, BooleanSupplier eventAfterEnd, IntConsumer onEventEnded, Holds holds)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
@@ -76,6 +77,7 @@ final class ProofCapture
 		this.sessionId = sessionId;
 		this.eventAfterEnd = eventAfterEnd;
 		this.onEventEnded = onEventEnded;
+		this.holds = holds;
 	}
 
 	void start()
@@ -364,6 +366,7 @@ final class ProofCapture
 					}
 					if (response.isSuccessful())
 					{
+						acknowledgeReservation(target);
 						postDiscord(png, discord, target);
 						return;
 					}
@@ -443,19 +446,20 @@ final class ProofCapture
 
 	private void releaseReservation(TileMatch.ProofTarget target)
 	{
-		Runnable undo = () ->
+		if (target == null || target.tile == null || target.item == null || target.item.key == null)
 		{
-			if (target.item.pending > 0)
-			{
-				target.item.pending--;
-			}
-		};
-		if (client.isClientThread())
-		{
-			undo.run();
 			return;
 		}
-		clientThread.invoke(undo);
+		holds.release(target.tile.id, target.item.key);
+	}
+
+	private void acknowledgeReservation(TileMatch.ProofTarget target)
+	{
+		if (target == null || target.tile == null || target.item == null || target.item.key == null)
+		{
+			return;
+		}
+		holds.acknowledge(target.tile.id, target.item.key);
 	}
 
 	private void postGameMessage(String message)
@@ -500,6 +504,13 @@ final class ProofCapture
 			throw new IOException("png writer missing");
 		}
 		return out.toByteArray();
+	}
+
+	interface Holds
+	{
+		void release(long tileId, String itemKey);
+
+		void acknowledge(long tileId, String itemKey);
 	}
 
 	@FunctionalInterface

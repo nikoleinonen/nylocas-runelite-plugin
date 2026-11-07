@@ -87,7 +87,7 @@ final class TileMatch
 		{
 			return openCount(tile) < tile.need;
 		}
-		return item.approved + item.pending < item.count;
+		return item.approved + item.pending + item.reserved < item.count;
 	}
 
 	private static int openCount(EventTile tile)
@@ -101,7 +101,7 @@ final class TileMatch
 		{
 			if (item != null)
 			{
-				count += item.approved + item.pending;
+				count += item.approved + item.pending + item.reserved;
 			}
 		}
 		return count;

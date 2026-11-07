@@ -63,6 +63,15 @@ public class TileMatchTest
 	}
 
 	@Test
+	public void localReservationFillsTheSlot()
+	{
+		EventTile tile = seedTile();
+		EventBoardClient.hold(tile.items.get(0));
+
+		assertNull(TileMatch.firstProof(List.of(tile), "Crystalline Hunllef", 4207));
+	}
+
+	@Test
 	public void poolPending()
 	{
 		EventTile tile = seedTile();

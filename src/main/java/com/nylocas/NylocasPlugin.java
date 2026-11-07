@@ -122,7 +122,20 @@ public class NylocasPlugin extends Plugin
 		}
 		WebsocketFrames frames = new WebsocketFrames(config, () -> running, () -> panel, () -> boardClient, this::chat, drops::consume);
 		websocket = new EventWebsocket(okHttpClient, gson, executor, this, frames, this::enemyFilters);
-		proofs = new ProofCapture(client, clientThread, drawManager, executor, okHttpClient, gson, this::sessionId, this::eventAfterEnd, this::onProofEventEnded);
+		proofs = new ProofCapture(client, clientThread, drawManager, executor, okHttpClient, gson, this::sessionId, this::eventAfterEnd, this::onProofEventEnded, new ProofCapture.Holds()
+		{
+			@Override
+			public void release(long tileId, String itemKey)
+			{
+				boardClient.releaseReservation(tileId, itemKey);
+			}
+
+			@Override
+			public void acknowledge(long tileId, String itemKey)
+			{
+				boardClient.acknowledgeReservation(tileId, itemKey);
+			}
+		});
 		boardClient.start();
 		proofs.start();
 		overlay = new EventOverlay(config, this);
@@ -839,7 +852,7 @@ public class NylocasPlugin extends Plugin
 			{
 				continue;
 			}
-			target.item.pending++;
+			EventBoardClient.hold(target.item);
 			target.itemName = drop.label;
 			targets.add(target);
 		}
