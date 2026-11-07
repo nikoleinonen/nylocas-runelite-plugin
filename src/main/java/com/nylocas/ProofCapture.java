@@ -62,7 +62,7 @@ final class ProofCapture
 	private final Holds holds;
 	private final List<Call> proofCalls = new ArrayList<>();
 	private volatile boolean running;
-	private boolean privateChatHidden;
+	private int hiddenPrivateFrames;
 	private int openChatFrames;
 	private int savedChatView = -1;
 
@@ -196,23 +196,30 @@ final class ProofCapture
 	private void hidePrivateChat()
 	{
 		Widget widget = client.getWidget(InterfaceID.PmChat.CONTAINER);
-		if (widget == null || widget.isHidden())
+		if (widget == null || (widget.isHidden() && hiddenPrivateFrames == 0))
 		{
 			return;
 		}
-		widget.setHidden(true);
-		privateChatHidden = true;
+		if (!widget.isHidden())
+		{
+			widget.setHidden(true);
+		}
+		hiddenPrivateFrames++;
 	}
 
 	private void showPrivateChat()
 	{
-		if (!privateChatHidden)
-		{
-			return;
-		}
-		privateChatHidden = false;
 		clientThread.invoke(() ->
 		{
+			if (hiddenPrivateFrames <= 0)
+			{
+				return;
+			}
+			hiddenPrivateFrames--;
+			if (hiddenPrivateFrames > 0)
+			{
+				return;
+			}
 			Widget widget = client.getWidget(InterfaceID.PmChat.CONTAINER);
 			if (widget != null)
 			{
