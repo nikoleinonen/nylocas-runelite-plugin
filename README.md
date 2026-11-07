@@ -57,7 +57,7 @@ The screenshot can show your username, the chat, and other players who are on sc
 
 ### Overlay
 
-The overlay sits at the top of the game. Before the event starts it counts down. Once the event is running it shows the event code and the time in UTC, in the form `DD/MM/YYYY HH:MM UTC`.
+The overlay sits at the top of the game. Before the event starts it counts down. Once the event is running it shows the event code and the time in UTC, in the form `5 Jan 2026 03:04 UTC`.
 
 If the organizer set a code, that code is used. The code you type here is the fallback.
 
