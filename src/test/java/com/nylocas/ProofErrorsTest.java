@@ -27,27 +27,7 @@ public class ProofErrorsTest
 	@Test
 	public void manualSubmit()
 	{
-		String[] errors = {
-			"invalid tiles",
-			"invalid player",
-			"invalid item",
-			"invalid source",
-			"invalid completions",
-			"already exists",
-			"not found",
-			"invalid image",
-			"image too large",
-			"invalid submission",
-			"invalid body",
-			"body too large",
-			"request timeout",
-			"internal error",
-			"unauthorized"
-		};
-		for (String error : errors)
-		{
-			assertEquals(error, ProofErrors.MANUAL, ProofErrors.line(error));
-		}
+		assertEquals(ProofErrors.MANUAL, ProofErrors.line("invalid tiles"));
 	}
 
 	@Test

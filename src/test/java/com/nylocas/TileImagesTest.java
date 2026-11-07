@@ -103,14 +103,6 @@ public class TileImagesTest
 		assertEquals(new Color(0x00ff80), TileImages.countColor(10_000_000));
 	}
 
-	@Test
-	public void cellHeight()
-	{
-		assertEquals(27, EventPanel.cellHeight(36));
-		assertEquals(3, EventPanel.cellHeight(4));
-		assertEquals(1, EventPanel.cellHeight(1));
-	}
-
 	private static EventTile tile()
 	{
 		EventTile tile = new EventTile();

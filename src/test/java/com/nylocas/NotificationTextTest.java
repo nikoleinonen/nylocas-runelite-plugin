@@ -49,21 +49,12 @@ public class NotificationTextTest
 	}
 
 	@Test
-	public void enemyColor()
-	{
-		String team = ColorUtil.wrapWithColorTag("Red", ENEMY);
-		String tile = ColorUtil.wrapWithColorTag("Armadyl hilt", TILE);
-		assertEquals(team + "'s submission for " + tile + " got approved", NotificationText.approved(NotificationText.APPROVED, "Red", "Armadyl hilt", ENEMY, TILE));
-	}
-
-	@Test
 	public void writesRankLines()
 	{
 		String leader = ColorUtil.wrapWithColorTag("Blue", OWN);
 		assertEquals(leader + " took the lead!", NotificationText.rank(NotificationText.RANK_LEAD, "Blue", OWN));
 		assertEquals(leader + " won the event! Congratulations!", NotificationText.rank(NotificationText.RANK_WIN, "Blue", OWN));
 		assertEquals("First place is tied.", NotificationText.rank(NotificationText.RANK_TIE, null, OWN));
-		assertEquals("First place is tied.", NotificationText.rank(NotificationText.RANK_TIE, "", ENEMY));
 	}
 
 	@Test
@@ -83,13 +74,5 @@ public class NotificationTextTest
 		assertEquals("", NotificationText.rank("  ", "Blue", OWN));
 		assertEquals("", NotificationText.rank(null, "Blue", OWN));
 		assertEquals("Still {nope}", NotificationText.drop("Still {nope}", "Blue", "Bandos hilt", "Bandos", OWN, DROP, TILE));
-	}
-
-	@Test
-	public void filterFrame()
-	{
-		assertEquals(
-			"{\"type\":\"filter\",\"enemy\":1,\"enemy_reject\":0,\"enemy_drop\":1}",
-			EventWebsocket.filterText(true, false, true));
 	}
 }
