@@ -17,7 +17,8 @@ final class RaidLoot
 	{
 		return "Chambers of Xeric".equals(lootName)
 			|| "Theatre of Blood".equals(lootName)
-			|| "Tombs of Amascut".equals(lootName);
+			|| "Tombs of Amascut".equals(lootName)
+			|| "Fractured Archive".equals(lootName);
 	}
 
 	static String fromKillCount(String message)
@@ -29,7 +30,8 @@ final class RaidLoot
 		}
 		if (count.name.startsWith("Chambers of Xeric")
 			|| count.name.startsWith("Theatre of Blood")
-			|| count.name.startsWith("Tombs of Amascut"))
+			|| count.name.startsWith("Tombs of Amascut")
+			|| count.name.startsWith("Fractured Archive"))
 		{
 			return count.name;
 		}
