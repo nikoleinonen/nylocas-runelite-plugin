@@ -64,6 +64,7 @@ public interface NylocasConfig extends Config
 		keyName = CONNECT_WEBSOCKET,
 		name = "Enable real-time updates",
 		description = "Keep your team's board up to date while the session is connected. Teammate drops, approvals, rejections, enemy notices, and first-place changes need this. Your own drop is announced without it.",
+		warning = "This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers. This allows a WebSocket connection to wss://ws.nylocas.com.",
 		position = 1,
 		section = eventSection
 	)
@@ -101,6 +102,7 @@ public interface NylocasConfig extends Config
 		keyName = "submitProofs",
 		name = "Auto submit",
 		description = "Automatically send a screenshot when you get a drop for an event tile. Take one yourself as well, in case the automatic one fails or the automatic proof is invalid.",
+		warning = "This feature submits your IP address to a 3rd-party server not controlled or verified by RuneLite developers. The screenshot is sent to api.nylocas.com.",
 		position = 0,
 		section = submissionsSection
 	)
