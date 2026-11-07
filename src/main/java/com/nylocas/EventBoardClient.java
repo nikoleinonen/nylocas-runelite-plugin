@@ -873,18 +873,8 @@ final class EventBoardClient
 
 	private String errorMessage(String body)
 	{
-		try
-		{
-			ErrorBody error = gson.fromJson(body, ErrorBody.class);
-			if (error != null && error.error != null && !error.error.isEmpty())
-			{
-				return error.error;
-			}
-		}
-		catch (RuntimeException ignored)
-		{
-		}
-		return "Could not fetch event";
+		String message = ErrorBody.message(gson, body);
+		return message.isEmpty() ? "Could not fetch event" : message;
 	}
 
 	private static String codeOf(EventBoard board)
@@ -970,10 +960,5 @@ final class EventBoardClient
 			}
 		}
 		return List.copyOf(copy);
-	}
-
-	private static final class ErrorBody
-	{
-		private String error;
 	}
 }

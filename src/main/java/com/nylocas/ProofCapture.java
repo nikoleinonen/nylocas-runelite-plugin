@@ -419,15 +419,7 @@ final class ProofCapture
 
 	private String errorOf(String body)
 	{
-		try
-		{
-			ErrorBody parsed = gson.fromJson(body, ErrorBody.class);
-			return parsed == null || parsed.error == null ? "" : parsed.error;
-		}
-		catch (RuntimeException ex)
-		{
-			return "";
-		}
+		return ErrorBody.message(gson, body);
 	}
 
 	private void untrackProof(Call call)
@@ -620,10 +612,5 @@ final class ProofCapture
 		{
 			List<String> parse = List.of();
 		}
-	}
-
-	private static final class ErrorBody
-	{
-		String error;
 	}
 }

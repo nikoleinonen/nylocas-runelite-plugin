@@ -386,8 +386,7 @@ final class EventWebsocket
 		}
 		try
 		{
-			ErrorBody body = gson.fromJson(response.body().string(), ErrorBody.class);
-			return body == null || body.error == null ? "" : body.error;
+			return ErrorBody.message(gson, response.body().string());
 		}
 		catch (Exception ex)
 		{
@@ -478,10 +477,5 @@ final class EventWebsocket
 
 		@SerializedName("enemy_drop")
 		int enemyDrop;
-	}
-
-	private static final class ErrorBody
-	{
-		String error;
 	}
 }
