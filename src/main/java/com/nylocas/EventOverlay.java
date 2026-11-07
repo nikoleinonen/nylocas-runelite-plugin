@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import net.runelite.client.ui.overlay.OverlayMenuEntry;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -18,7 +19,7 @@ final class EventOverlay extends OverlayPanel
 {
 	private static final String STARTS_IN = "The event starts in: ";
 	private static final String REFRESH = "Refresh the event to get the code";
-	private static final DateTimeFormatter UTC_TIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(ZoneOffset.UTC);
+	private static final DateTimeFormatter UTC_TIME = DateTimeFormatter.ofPattern("d MMM yyyy HH:mm", Locale.ENGLISH).withZone(ZoneOffset.UTC);
 
 	private final NylocasConfig config;
 	private final NylocasPlugin plugin;

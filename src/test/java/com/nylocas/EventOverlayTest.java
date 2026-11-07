@@ -10,9 +10,10 @@ public class EventOverlayTest
 	@Test
 	public void formatsUtcTime()
 	{
-		assertEquals("16/10/2026 20:36 UTC", EventOverlay.utcTime(Instant.parse("2026-10-16T20:36:00Z")));
-		assertEquals("16/10/2026 20:36 UTC", EventOverlay.utcTime(Instant.parse("2026-10-16T20:36:59Z")));
-		assertEquals("05/01/2026 03:04 UTC", EventOverlay.utcTime(Instant.parse("2026-01-05T03:04:00Z")));
+		assertEquals("16 Oct 2026 20:36 UTC", EventOverlay.utcTime(Instant.parse("2026-10-16T20:36:00Z")));
+		assertEquals("16 Oct 2026 20:36 UTC", EventOverlay.utcTime(Instant.parse("2026-10-16T20:36:59Z")));
+		assertEquals("5 Jan 2026 03:04 UTC", EventOverlay.utcTime(Instant.parse("2026-01-05T03:04:00Z")));
+		assertEquals("16 Nov 2026 00:00 UTC", EventOverlay.utcTime(Instant.parse("2026-11-16T00:00:00Z")));
 	}
 
 	@Test
