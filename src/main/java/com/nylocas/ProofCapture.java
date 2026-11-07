@@ -110,7 +110,7 @@ final class ProofCapture
 		}
 	}
 
-	void capture(Directory directory, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<TileMatch.ProofTarget> proofs, long playerId, String proofKey, Integer completions, boolean hidePrivateMessages, boolean openChat, DiscordNotice discord)
+	void capture(Directory directory, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<TileMatch.ProofTarget> proofs, long playerId, String proofKey, Integer completions, boolean hidePrivateMessages, boolean openChat, DiscordNotice discord, List<TileMatch.ProofTarget> discordDrops)
 	{
 		if (openChat)
 		{
@@ -120,12 +120,13 @@ final class ProofCapture
 		{
 			hidePrivateChat();
 		}
+		List<TileMatch.ProofTarget> drops = discordDrops == null ? List.of() : discordDrops;
 		drawManager.requestNextFrameListener(image ->
 		{
 			try
 			{
 				BufferedImage shot = copyFrame(image);
-				executor.execute(() -> saveAndUploadScreenshot(directory, shot, eventName, labels, saveLocally, uploadProofs, proofs, playerId, proofKey, completions, discord));
+				executor.execute(() -> saveAndUploadScreenshot(directory, shot, eventName, labels, saveLocally, uploadProofs, proofs, playerId, proofKey, completions, discord, drops));
 			}
 			finally
 			{
@@ -229,8 +230,9 @@ final class ProofCapture
 		});
 	}
 
-	private void saveAndUploadScreenshot(Directory directory, BufferedImage shot, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<TileMatch.ProofTarget> targets, long playerId, String key, Integer completions, DiscordNotice discord)
+	private void saveAndUploadScreenshot(Directory directory, BufferedImage shot, String eventName, List<String> labels, boolean saveLocally, boolean uploadProofs, List<TileMatch.ProofTarget> targets, long playerId, String key, Integer completions, DiscordNotice discord, List<TileMatch.ProofTarget> discordDrops)
 	{
+		boolean sendDiscord = discord != null && discordDrops != null && !discordDrops.isEmpty();
 		if (!running || shot == null)
 		{
 			if (uploadProofs)
@@ -240,6 +242,10 @@ final class ProofCapture
 				{
 					proofFailed();
 				}
+			}
+			else if (running && sendDiscord)
+			{
+				postGameMessage(ColorUtil.wrapWithColorTag("Could not send drop to Discord", Color.RED));
 			}
 			return;
 		}
@@ -256,22 +262,29 @@ final class ProofCapture
 				releaseReservations(targets);
 				proofFailed();
 			}
-			else
+			else if (saveLocally)
 			{
 				postGameMessage(ColorUtil.wrapWithColorTag("Could not save screenshot", Color.RED));
+			}
+			else if (sendDiscord)
+			{
+				postGameMessage(ColorUtil.wrapWithColorTag("Could not send drop to Discord", Color.RED));
 			}
 			return;
 		}
 		if (saveLocally)
 		{
 			boolean saved = saveScreenshot(directory, png, eventName, labels);
-			if (!uploadProofs)
+			if (!saved && !uploadProofs)
 			{
-				if (!saved)
-				{
-					postGameMessage(ColorUtil.wrapWithColorTag("Could not save screenshot", Color.RED));
-				}
-				return;
+				postGameMessage(ColorUtil.wrapWithColorTag("Could not save screenshot", Color.RED));
+			}
+		}
+		if (sendDiscord && running)
+		{
+			for (TileMatch.ProofTarget drop : discordDrops)
+			{
+				postDiscord(png, discord, drop);
 			}
 		}
 		if (!uploadProofs)
@@ -285,7 +298,7 @@ final class ProofCapture
 				releaseReservation(target);
 				continue;
 			}
-			enqueueProof(png, target, playerId, key, completions, discord);
+			enqueueProof(png, target, playerId, key, completions);
 		}
 	}
 
@@ -315,7 +328,7 @@ final class ProofCapture
 		}
 	}
 
-	private void enqueueProof(byte[] png, TileMatch.ProofTarget target, long playerId, String key, Integer completions, DiscordNotice discord)
+	private void enqueueProof(byte[] png, TileMatch.ProofTarget target, long playerId, String key, Integer completions)
 	{
 		RequestBody file = RequestBody.create(MediaType.parse("image/png"), png);
 		MultipartBody.Builder form = new MultipartBody.Builder()
@@ -375,7 +388,6 @@ final class ProofCapture
 					if (response.isSuccessful())
 					{
 						acknowledgeReservation(target);
-						postDiscord(png, discord, target);
 						return;
 					}
 					String responseBody = response.body() == null ? "" : response.body().string();

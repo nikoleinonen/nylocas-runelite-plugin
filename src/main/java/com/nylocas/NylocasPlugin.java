@@ -782,7 +782,7 @@ public class NylocasPlugin extends Plugin
 		List<TileMatch.ProofTarget> reported = uploadProofs ? reserved : dropsOf(matched.drops);
 		chatOwnDrops(reported, uploadProofs);
 		announceDrops(reported, live, proofPlayerId, proofKey);
-		captureProofs(matched.labels, sourceName, uploadProofs, reserved, proofPlayerId, proofKey);
+		captureProofs(matched.labels, sourceName, uploadProofs, reserved, reported, proofPlayerId, proofKey);
 	}
 
 	private LootMatch matchLoot(List<EventTile> tiles, String sourceName, Collection<ItemStack> stacks)
@@ -852,14 +852,19 @@ public class NylocasPlugin extends Plugin
 		}
 	}
 
-	private void captureProofs(List<String> labels, String sourceName, boolean uploadProofs, List<TileMatch.ProofTarget> targets, long playerId, String proofKey)
+	private void captureProofs(List<String> labels, String sourceName, boolean uploadProofs, List<TileMatch.ProofTarget> targets, List<TileMatch.ProofTarget> discordTargets, long playerId, String proofKey)
 	{
 		boolean saveLocally = config.saveProofs();
-		if (!saveLocally && !uploadProofs)
+		ProofCapture.DiscordNotice discord = discordNotice();
+		if (!saveLocally && !uploadProofs && discord == null)
 		{
 			return;
 		}
-		proofs.capture(this::pluginDirectory, boardClient.eventName(), labels, saveLocally, uploadProofs, targets, playerId, proofKey, completionCount(sourceName), config.hidePrivateMessages(), config.openChat(), discordNotice());
+		if (discord == null)
+		{
+			discordTargets = List.of();
+		}
+		proofs.capture(this::pluginDirectory, boardClient.eventName(), labels, saveLocally, uploadProofs, targets, playerId, proofKey, completionCount(sourceName), config.hidePrivateMessages(), config.openChat(), discord, discordTargets);
 	}
 
 	private Filepath pluginDirectory() throws IOException
