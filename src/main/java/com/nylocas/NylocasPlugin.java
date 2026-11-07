@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -759,10 +760,37 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
+		LootMatch matched = matchLoot(tiles, sourceName, lootReceived.getItems());
+		if (matched.drops.isEmpty())
+		{
+			return;
+		}
+		boolean live = liveEvent();
+		String proofKey = live ? teamKey() : "";
+		long proofPlayerId = live ? EventPlayer.playerId(boardClient.players(), localPlayerName()) : 0;
+		boolean uploadProofs = config.submitProofs() && live;
+		List<TileMatch.ProofTarget> reserved = List.of();
+		if (uploadProofs)
+		{
+			reserved = reserveProofs(tiles, sourceName, matched.drops);
+			if (!canUpload(reserved, proofKey, proofPlayerId))
+			{
+				reserved = List.of();
+				uploadProofs = false;
+			}
+		}
+		List<TileMatch.ProofTarget> reported = uploadProofs ? reserved : dropsOf(matched.drops);
+		chatOwnDrops(reported, uploadProofs);
+		announceDrops(reported, live, proofPlayerId, proofKey);
+		captureProofs(matched.labels, sourceName, uploadProofs, reserved, proofPlayerId, proofKey);
+	}
+
+	private LootMatch matchLoot(List<EventTile> tiles, String sourceName, Collection<ItemStack> stacks)
+	{
 		List<String> seen = new ArrayList<>();
 		List<String> labels = new ArrayList<>();
-		List<LootDrop> matched = new ArrayList<>();
-		for (ItemStack stack : lootReceived.getItems())
+		List<LootDrop> drops = new ArrayList<>();
+		for (ItemStack stack : stacks)
 		{
 			String label = itemLabel(stack.getId());
 			seen.add(label);
@@ -776,59 +804,62 @@ public class NylocasPlugin extends Plugin
 			{
 				labels.add(label);
 			}
-			matched.add(new LootDrop(stack.getId(), label, target));
+			drops.add(new LootDrop(stack.getId(), label, target));
 		}
 		log.debug("Allowed source {} dropped {}", sourceName, seen);
-		if (matched.isEmpty())
+		return new LootMatch(labels, drops);
+	}
+
+	private boolean liveEvent()
+	{
+		return config.connect() && !proofsStopped && !boardClient.beforeStart() && !boardClient.afterEnd();
+	}
+
+	private boolean canUpload(List<TileMatch.ProofTarget> reserved, String proofKey, long proofPlayerId)
+	{
+		if (!proofKey.isEmpty() && proofPlayerId != 0)
+		{
+			return true;
+		}
+		proofs.releaseReservations(reserved);
+		proofs.proofFailed();
+		return false;
+	}
+
+	private void chatOwnDrops(List<TileMatch.ProofTarget> targets, boolean submitted)
+	{
+		if (boardClient.beforeStart() || !config.eventDrop())
 		{
 			return;
 		}
+		String template = submitted ? NotificationText.OWN_DROP_SUBMITTED : NotificationText.OWN_DROP;
+		for (TileMatch.ProofTarget target : targets)
+		{
+			String dropName = target.itemName == null ? "" : target.itemName;
+			chat(NotificationText.drop(template, teamName(), dropName, TileText.tileTitle(target.tile), config.ownTeamColor(), config.dropColor(), config.tileColor()));
+		}
+	}
+
+	private void announceDrops(List<TileMatch.ProofTarget> targets, boolean live, long playerId, String proofKey)
+	{
+		if (!live || proofKey.isEmpty() || playerId == 0)
+		{
+			return;
+		}
+		for (TileMatch.ProofTarget target : targets)
+		{
+			drops.announce(target, playerId, proofKey);
+		}
+	}
+
+	private void captureProofs(List<String> labels, String sourceName, boolean uploadProofs, List<TileMatch.ProofTarget> targets, long playerId, String proofKey)
+	{
 		boolean saveLocally = config.saveProofs();
-		boolean live = config.connect() && !proofsStopped && !boardClient.beforeStart() && !boardClient.afterEnd();
-		boolean uploadProofs = config.submitProofs() && live;
-		List<TileMatch.ProofTarget> targets = List.of();
-		String proofKey = "";
-		long proofPlayerId = 0;
-		if (live)
-		{
-			proofKey = teamKey();
-			proofPlayerId = EventPlayer.playerId(boardClient.players(), localPlayerName());
-		}
-		if (uploadProofs)
-		{
-			// Reserving one drop changes which tile the next drop matches.
-			targets = reserveProofs(tiles, sourceName, matched);
-			if (proofKey.isEmpty() || proofPlayerId == 0)
-			{
-				proofs.releaseReservations(targets);
-				proofs.proofFailed();
-				targets = List.of();
-				uploadProofs = false;
-			}
-		}
-		if (!boardClient.beforeStart() && config.eventDrop())
-		{
-			List<TileMatch.ProofTarget> chatTargets = uploadProofs ? targets : dropsOf(matched);
-			String template = uploadProofs ? NotificationText.OWN_DROP_SUBMITTED : NotificationText.OWN_DROP;
-			for (TileMatch.ProofTarget target : chatTargets)
-			{
-				String dropName = target.itemName == null ? "" : target.itemName;
-				chat(NotificationText.drop(template, teamName(), dropName, TileText.tileTitle(target.tile), config.ownTeamColor(), config.dropColor(), config.tileColor()));
-			}
-		}
-		if (live && !proofKey.isEmpty() && proofPlayerId != 0)
-		{
-			List<TileMatch.ProofTarget> announced = uploadProofs ? targets : dropsOf(matched);
-			for (TileMatch.ProofTarget target : announced)
-			{
-				drops.announce(target, proofPlayerId, proofKey);
-			}
-		}
 		if (!saveLocally && !uploadProofs)
 		{
 			return;
 		}
-		proofs.capture(this::pluginDirectory, boardClient.eventName(), labels, saveLocally, uploadProofs, targets, proofPlayerId, proofKey, completionCount(sourceName), config.hidePrivateMessages(), config.openChat(), discordNotice());
+		proofs.capture(this::pluginDirectory, boardClient.eventName(), labels, saveLocally, uploadProofs, targets, playerId, proofKey, completionCount(sourceName), config.hidePrivateMessages(), config.openChat(), discordNotice());
 	}
 
 	private Filepath pluginDirectory() throws IOException
@@ -845,6 +876,7 @@ public class NylocasPlugin extends Plugin
 	private List<TileMatch.ProofTarget> reserveProofs(List<EventTile> tiles, String sourceName, List<LootDrop> matched)
 	{
 		List<TileMatch.ProofTarget> targets = new ArrayList<>();
+		// Reserving one drop changes which tile the next drop matches.
 		for (LootDrop drop : matched)
 		{
 			TileMatch.ProofTarget target = TileMatch.firstProof(tiles, sourceName, drop.itemId);
@@ -920,6 +952,18 @@ public class NylocasPlugin extends Plugin
 			return null;
 		}
 		return seen.count;
+	}
+
+	private static final class LootMatch
+	{
+		final List<String> labels;
+		final List<LootDrop> drops;
+
+		LootMatch(List<String> labels, List<LootDrop> drops)
+		{
+			this.labels = labels;
+			this.drops = drops;
+		}
 	}
 
 	private static final class LootDrop
