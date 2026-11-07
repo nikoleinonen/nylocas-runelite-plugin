@@ -33,7 +33,7 @@ Settings are grouped into four sections. Everything is off by default.
 | Setting                                 | What it does                                                                                                                                                                                                                                                                                                               |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Connect to nylocas.com**              | Lets the plugin load the event from the nylocas.com backend. RuneLite warns that this sends your IP address to a third-party server. Any request on the internet does that. The backend temporarily retains your IP address in memory for rate-limiting purposes only. IP addresses are not logged or stored persistently. |
-| **Enable real-time updates**            | Keeps the board and the event code up to date, and delivers the chat messages if you enable those.                                                                                                                                                                                                                         |
+| **Enable real-time updates**            | Keeps the board and the event code up to date. Teammate drops, approvals, rejections, enemy notices, and first-place changes also need this. Your own drop is announced without it.                                                                                                                                       |
 | **Auto-connect/fetch event upon login** | Connects or fetches automatically when you log in. Real-time updates decide whether you stay connected or only load the board once.                                                                                                                                                                                        |
 | **Team key**                            | The key for your team. Acts as the "Authentication" for the event you are in.                                                                                                                                                                                                                                              |
 
@@ -47,9 +47,9 @@ It is recommended to take your own screenshot as a backup, unless you're confide
 
 | Setting                          | What it does                                                                                                                                                                                |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Auto submit**                  | Sends a screenshot of the game as proof. The organizer approves or rejects it on the website.                                                                                               |
+| **Auto submit**                  | Sends a screenshot of the game as proof while the event is running. A matching drop before the start, or after the end, is not uploaded. The organizer approves or rejects it on the website. |
 | **Save locally**                 | Saves that screenshot on your computer, in a folder named after the event. This stays on your machine.                                                                                      |
-| **Send drop to Discord**         | When you get a drop, it takes a screenshot of the game and sends it to the Discord webhook that the organizer have set.                                                                     |
+| **Send drop to Discord**         | When you get a drop, it takes a screenshot of the game and sends it to the Discord webhook that the organizer has set.                                                                      |
 | **Hide private messages**        | Hides private chat in the screenshot. This does nothing if Split private chat is off in the game's chat settings, unless this plugin's **Open game chat automatically** setting is also on. |
 | **Open game chat automatically** | Opens the game chat for the screenshot. Turn this on if you play with the chat box closed, or the proof is taken with the chat still hidden.                                                |
 
@@ -57,7 +57,7 @@ The screenshot can show your username, the chat, and other players who are on sc
 
 ### Overlay
 
-The overlay sits at the top of the game. Before the event starts it counts down. Once the event is running it shows the event code and the time in UTC, in the form `5 Jan 2026 03:04 UTC`.
+The overlay sits at the top of the game. Before you connect, it shows the code you typed and the UTC time. After the event is loaded and before it starts, it counts down and hides the UTC time. Once the event is running it shows the event code and the time in UTC, in the form `5 Jan 2026 03:04 UTC`.
 
 If the organizer set a code, that code is used. The code you type here is the fallback.
 
@@ -76,7 +76,7 @@ If the organizer set a code, that code is used. The code you type here is the fa
 
 These are game-chat messages. Team names, the drop, the tile, and a rejection reason use the colors at the bottom of this section. The rest of the line stays the normal chat color.
 
-Your own drop can be announced as soon as you receive it, once the event has started and the board is loaded. The other notices need **Enable real-time updates**.
+Your own drop is announced once the event has started and the board is loaded. With **Auto submit** off, that line appears as soon as you receive the drop. With **Auto submit** on, it waits for the server. An accepted proof says `You got: …, auto submitted`. A failed one is the plain `You got: …` line, then a red failure line. The other notices need **Enable real-time updates**.
 
 ![Notification settings](https://i.imgur.com/z2WZO4g.png)
 
