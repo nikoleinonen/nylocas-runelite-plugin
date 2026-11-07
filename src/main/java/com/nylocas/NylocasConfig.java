@@ -305,7 +305,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "displayOverlay",
 		name = "Display overlay",
-		description = "Show the event code and the current UTC time on the game screen",
+		description = "Show the overlay on the game screen. Before a loaded event starts, this is a countdown and the UTC time is hidden. Once the event is running, it shows the event code and the UTC time.",
 		position = 0,
 		section = overlaySection
 	)
@@ -329,7 +329,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "codeColor",
 		name = "Code color",
-		description = "Color of the event code",
+		description = "Color of the event code, and of the countdown before the start.",
 		position = 2,
 		section = overlaySection
 	)
