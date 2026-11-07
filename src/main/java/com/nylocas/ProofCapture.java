@@ -1,6 +1,7 @@
 package com.nylocas;
 
 import com.google.gson.Gson;
+import com.google.gson.annotations.SerializedName;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Image;
@@ -534,7 +535,7 @@ final class ProofCapture
 			return;
 		}
 		String item = target == null || target.itemName == null ? "" : target.itemName;
-		String payload = "{\"content\":" + jsonString(discordDropMessage(notice.teamName, notice.playerName, item, sourceLabel(target))) + ",\"allowed_mentions\":{\"parse\":[]}}";
+		String payload = discordPayload(gson, discordDropMessage(notice.teamName, notice.playerName, item, sourceLabel(target)));
 		RequestBody body = new MultipartBody.Builder()
 			.setType(MultipartBody.FORM)
 			.addFormDataPart("payload_json", payload)
@@ -587,41 +588,11 @@ final class ProofCapture
 		return "";
 	}
 
-	private static String jsonString(String value)
+	static String discordPayload(Gson gson, String content)
 	{
-		StringBuilder out = new StringBuilder(value.length() + 2);
-		out.append('"');
-		for (int i = 0; i < value.length(); i++)
-		{
-			char c = value.charAt(i);
-			switch (c)
-			{
-				case '"':
-					out.append("\\\"");
-					break;
-				case '\\':
-					out.append("\\\\");
-					break;
-				case '\n':
-					out.append("\\n");
-					break;
-				case '\r':
-					out.append("\\r");
-					break;
-				default:
-					if (c < 0x20)
-					{
-						out.append(String.format("\\u%04x", (int) c));
-					}
-					else
-					{
-						out.append(c);
-					}
-					break;
-			}
-		}
-		out.append('"');
-		return out.toString();
+		DiscordPayload payload = new DiscordPayload();
+		payload.content = content;
+		return gson.toJson(payload);
 	}
 
 	static final class DiscordNotice
@@ -635,6 +606,19 @@ final class ProofCapture
 			this.webhook = webhook;
 			this.playerName = playerName == null ? "" : playerName;
 			this.teamName = teamName == null ? "" : teamName;
+		}
+	}
+
+	private static final class DiscordPayload
+	{
+		String content;
+
+		@SerializedName("allowed_mentions")
+		Mentions allowedMentions = new Mentions();
+
+		private static final class Mentions
+		{
+			List<String> parse = List.of();
 		}
 	}
 

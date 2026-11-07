@@ -58,11 +58,13 @@ final class EventWebsocket
 		this.enemyFilters = enemyFilters;
 	}
 
-	static String filterText(boolean enemy, boolean enemyReject, boolean enemyDrop)
+	static String filterText(Gson gson, boolean enemy, boolean enemyReject, boolean enemyDrop)
 	{
-		return "{\"type\":\"filter\",\"enemy\":" + (enemy ? 1 : 0)
-			+ ",\"enemy_reject\":" + (enemyReject ? 1 : 0)
-			+ ",\"enemy_drop\":" + (enemyDrop ? 1 : 0) + "}";
+		FilterFrame frame = new FilterFrame();
+		frame.enemy = enemy ? 1 : 0;
+		frame.enemyReject = enemyReject ? 1 : 0;
+		frame.enemyDrop = enemyDrop ? 1 : 0;
+		return gson.toJson(frame);
 	}
 
 	void open(String teamKey, String startsAt, String endsAt)
@@ -127,7 +129,7 @@ final class EventWebsocket
 			}
 			filtersDirty = false;
 		}
-		current.send(filterText(next.enemy, next.enemyReject, next.enemyDrop));
+		current.send(filterText(gson, next.enemy, next.enemyReject, next.enemyDrop));
 	}
 
 	void stop()
@@ -340,7 +342,7 @@ final class EventWebsocket
 			enemyReject = this.enemyReject;
 			enemyDrop = this.enemyDrop;
 		}
-		current.send(filterText(enemy, enemyReject, enemyDrop));
+		current.send(filterText(gson, enemy, enemyReject, enemyDrop));
 	}
 
 	private void finish(boolean eventOver)
@@ -464,6 +466,18 @@ final class EventWebsocket
 
 		@SerializedName("event_code")
 		String eventCode;
+	}
+
+	private static final class FilterFrame
+	{
+		String type = "filter";
+		int enemy;
+
+		@SerializedName("enemy_reject")
+		int enemyReject;
+
+		@SerializedName("enemy_drop")
+		int enemyDrop;
 	}
 
 	private static final class ErrorBody
