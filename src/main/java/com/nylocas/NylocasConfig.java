@@ -63,7 +63,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = CONNECT_WEBSOCKET,
 		name = "Enable real-time updates",
-		description = "Keep your team's board up to date while the session is connected. This also delivers the chat notifications in the Notifications section.",
+		description = "Keep your team's board up to date while the session is connected. Teammate drops, approvals, rejections, enemy notices, and first-place changes need this. Your own drop is announced without it.",
 		position = 1,
 		section = eventSection
 	)
@@ -161,7 +161,7 @@ public interface NylocasConfig extends Config
 	@ConfigItem(
 		keyName = "receiveRank",
 		name = "First place changes",
-		description = "Show a chat message when a team takes the lead or wins the event.",
+		description = "Show a chat message when a team takes the lead, first place becomes a tie, or a team wins the event.",
 		position = 0,
 		section = notificationsSection
 	)
