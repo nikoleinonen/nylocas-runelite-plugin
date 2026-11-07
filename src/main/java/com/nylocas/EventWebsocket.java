@@ -271,7 +271,14 @@ final class EventWebsocket
 				String message = errorText(response);
 				if (status == 401)
 				{
-					finish(true);
+					if (EventTime.afterEnd(endsAt, Instant.now()))
+					{
+						finish(true);
+					}
+					else
+					{
+						rejectKey();
+					}
 					return;
 				}
 				if (status == 400 && "event has not started".equals(message))
@@ -354,6 +361,17 @@ final class EventWebsocket
 		stopped = true;
 		cancelPending();
 		SwingUtilities.invokeLater(() -> plugin.websocketEnded(eventOver));
+	}
+
+	private void rejectKey()
+	{
+		if (stopped)
+		{
+			return;
+		}
+		stopped = true;
+		cancelPending();
+		SwingUtilities.invokeLater(plugin::teamKeyRejected);
 	}
 
 	private void schedule(long delayMillis, Runnable task)

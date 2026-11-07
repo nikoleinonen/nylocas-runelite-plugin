@@ -496,7 +496,7 @@ public class NylocasPlugin extends Plugin
 		if (eventOver)
 		{
 			proofsStopped = true;
-			endEventSession();
+			endEventSession(ProofErrors.EVENT_ENDED);
 			return;
 		}
 		EventPanel current = panel;
@@ -613,7 +613,7 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		endEventSession();
+		endEventSession(ProofErrors.EVENT_ENDED);
 	}
 
 	private void onProofEventEnded(int session)
@@ -627,10 +627,20 @@ public class NylocasPlugin extends Plugin
 		{
 			return;
 		}
-		endEventSession();
+		endEventSession(ProofErrors.EVENT_ENDED);
 	}
 
-	private void endEventSession()
+	void teamKeyRejected()
+	{
+		if (!running)
+		{
+			return;
+		}
+		proofsStopped = true;
+		endEventSession(ProofErrors.KEY_REJECTED);
+	}
+
+	private void endEventSession(String line)
 	{
 		SwingUtilities.invokeLater(() ->
 		{
@@ -643,7 +653,7 @@ public class NylocasPlugin extends Plugin
 			{
 				return;
 			}
-			chat(ProofErrors.EVENT_ENDED);
+			chat(line);
 		});
 	}
 

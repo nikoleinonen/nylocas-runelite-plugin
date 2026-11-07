@@ -4,8 +4,10 @@ final class ProofErrors
 {
 	static final String MANUAL = "NCE - Failed to submit proof automatically. Please submit it manually.";
 	static final String TILE_COMPLETE = "NCE - Failed to submit proof automatically, tile is completed";
+	static final String TOO_LARGE = "NCE - Failed to submit proof automatically, the screenshot is too large.";
 	static final String RATE_LIMITED = "NCE - Rate limited, if you think this appeared with normal use, report it on github or discord.";
 	static final String EVENT_ENDED = "NCE - The event has ended.";
+	static final String KEY_REJECTED = "NCE - The team key was rejected.";
 
 	private ProofErrors()
 	{
@@ -34,6 +36,9 @@ final class ProofErrors
 				return null;
 			case "tile complete":
 				return TILE_COMPLETE;
+			case "image too large":
+			case "body too large":
+				return TOO_LARGE;
 			case "rate limited":
 				return RATE_LIMITED;
 			default:

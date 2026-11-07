@@ -37,6 +37,13 @@ public class ProofErrorsTest
 	}
 
 	@Test
+	public void screenshotTooLarge()
+	{
+		assertEquals(ProofErrors.TOO_LARGE, ProofErrors.line("image too large"));
+		assertEquals(ProofErrors.TOO_LARGE, ProofErrors.line("body too large"));
+	}
+
+	@Test
 	public void eventOver()
 	{
 		assertTrue(ProofErrors.endsEvent("event has ended", false));
