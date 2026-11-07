@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -88,6 +89,7 @@ final class EventPanel extends PluginPanel
 	private final List<EventTile> knownTiles = new ArrayList<>();
 	private int boardRows;
 	private int boardCols;
+	private boolean boardConcealed;
 	private int openRow;
 	private int rowTicket;
 	private boolean refreshingRow;
@@ -550,6 +552,15 @@ final class EventPanel extends PluginPanel
 		revalidate();
 	}
 
+	void reloadHiddenBoard()
+	{
+		if (stopped || !connected)
+		{
+			return;
+		}
+		plugin.refreshEvent((int) (System.currentTimeMillis() / 1000L), rowTicket);
+	}
+
 	void showBoard(EventBoard board, Map<Integer, String> names, Map<Integer, AsyncBufferedImage> images, Map<Long, TileImages.Image> tileImages, boolean reopenSocket, int rowTicket)
 	{
 		if (stopped || !acceptBoard || (!reopenSocket && rowTicket != this.rowTicket))
@@ -568,6 +579,33 @@ final class EventPanel extends PluginPanel
 		itemImages = images == null ? Map.of() : images;
 		this.tileImages = tileImages == null ? Map.of() : tileImages;
 		knownTiles.clear();
+		if (board != null && board.boardHidden)
+		{
+			boardRows = board.rows;
+			boardCols = board.cols;
+			openRow = board.openRow;
+			boardConcealed = true;
+			selectedCell = null;
+			paintGrid();
+			status.setText(teamLabel(board));
+			showRank(board);
+			updateSessionButton();
+			if (reopenSocket)
+			{
+				plugin.openWebsocket(board);
+				plugin.noteSession(board);
+				if (announce != Announce.NONE)
+				{
+					boolean reconnected = announce == Announce.RECONNECT;
+					announce = Announce.NONE;
+					plugin.announceSession(board, reconnected);
+				}
+			}
+			plugin.scheduleBoardReveal(board);
+			return;
+		}
+		boardConcealed = false;
+		plugin.scheduleBoardReveal(null);
 		if (board != null && board.tiles != null)
 		{
 			for (EventTile tile : board.tiles)
@@ -645,6 +683,11 @@ final class EventPanel extends PluginPanel
 				for (int col = 0; col < boardCols; col++)
 				{
 					EventTile tile = tileAt(knownTiles, row, col);
+					if (boardConcealed && row >= openRow)
+					{
+						grid.add(questionCell());
+						continue;
+					}
 					if (row < openRow || tile == null)
 					{
 						grid.add(lockedCell(tile == null && row >= openRow));
@@ -758,6 +801,18 @@ final class EventPanel extends PluginPanel
 		};
 		cell.addMouseListener(select);
 		view.addMouseListener(select);
+		return cell;
+	}
+
+	private JPanel questionCell()
+	{
+		JPanel cell = new JPanel(new GridBagLayout());
+		cell.setBackground(INCOMPLETE_COLOR);
+		cell.setBorder(INCOMPLETE_BORDER);
+		JLabel mark = new JLabel("?");
+		mark.setFont(mark.getFont().deriveFont(Font.BOLD, 18f));
+		mark.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		cell.add(mark);
 		return cell;
 	}
 

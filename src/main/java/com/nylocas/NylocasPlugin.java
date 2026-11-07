@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -92,6 +93,9 @@ public class NylocasPlugin extends Plugin
 	private volatile ScheduledFuture<?> eventEndTask;
 	private volatile ScheduledFuture<?> realtimeTask;
 	private final AtomicInteger realtimeGeneration = new AtomicInteger();
+	private volatile ScheduledFuture<?> revealTask;
+	private final AtomicInteger revealGeneration = new AtomicInteger();
+	private boolean revealRetried;
 	private static final long REALTIME_QUIET_MS = 1000;
 	private String raidChatName;
 	private long raidChatAt;
@@ -376,11 +380,74 @@ public class NylocasPlugin extends Plugin
 		return boardClient == null || boardClient.teamName() == null ? "" : boardClient.teamName();
 	}
 
+	void scheduleBoardReveal(EventBoard board)
+	{
+		int ticket = revealGeneration.incrementAndGet();
+		ScheduledFuture<?> previous = revealTask;
+		revealTask = null;
+		if (previous != null)
+		{
+			previous.cancel(false);
+		}
+		if (!running || board == null || !board.boardHidden)
+		{
+			revealRetried = false;
+			return;
+		}
+		Instant at = EventTime.parse(board.boardVisibleAt);
+		if (at == null)
+		{
+			return;
+		}
+		long delay = Duration.between(Instant.now(), at).toMillis();
+		if (delay <= 0)
+		{
+			if (revealRetried)
+			{
+				return;
+			}
+			revealRetried = true;
+			delay = 4000;
+		}
+		else
+		{
+			revealRetried = false;
+		}
+		revealTask = executor.schedule(() ->
+		{
+			if (ticket != revealGeneration.get())
+			{
+				return;
+			}
+			SwingUtilities.invokeLater(() ->
+			{
+				EventPanel current = panel;
+				if (running && ticket == revealGeneration.get() && current != null)
+				{
+					current.reloadHiddenBoard();
+				}
+			});
+		}, delay, TimeUnit.MILLISECONDS);
+	}
+
+	private void cancelBoardReveal()
+	{
+		revealRetried = false;
+		revealGeneration.incrementAndGet();
+		ScheduledFuture<?> task = revealTask;
+		revealTask = null;
+		if (task != null)
+		{
+			task.cancel(false);
+		}
+	}
+
 	void endSession()
 	{
 		sessionGeneration.incrementAndGet();
 		cancelEventEnd();
 		cancelRealtime();
+		cancelBoardReveal();
 		if (proofs != null)
 		{
 			proofs.cancelUploads();

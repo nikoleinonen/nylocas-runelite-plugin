@@ -34,6 +34,12 @@ final class EventBoard
 	@SerializedName("ends_at")
 	String endsAt;
 
+	@SerializedName("board_hidden")
+	boolean boardHidden;
+
+	@SerializedName("board_visible_at")
+	String boardVisibleAt;
+
 	String rank;
 
 	@SerializedName("open_row")
