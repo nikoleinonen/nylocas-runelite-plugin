@@ -123,7 +123,7 @@ public class NylocasPlugin extends Plugin
 		}
 		WebsocketFrames frames = new WebsocketFrames(config, () -> running, () -> panel, () -> boardClient, this::chat, drops::consume);
 		websocket = new EventWebsocket(okHttpClient, gson, executor, this, frames, this::enemyFilters);
-		proofs = new ProofCapture(client, clientThread, drawManager, executor, okHttpClient, gson, this::sessionId, this::eventAfterEnd, this::onProofEventEnded, new ProofCapture.Holds()
+		proofs = new ProofCapture(client, clientThread, drawManager, executor, okHttpClient, gson, this::sessionId, this::eventAfterEnd, this::onProofEventEnded, (target, submitted) -> chatOwnDrops(List.of(target), submitted), new ProofCapture.Holds()
 		{
 			@Override
 			public void release(long tileId, String itemKey)
@@ -780,7 +780,10 @@ public class NylocasPlugin extends Plugin
 			}
 		}
 		List<TileMatch.ProofTarget> reported = uploadProofs ? reserved : dropsOf(matched.drops);
-		chatOwnDrops(reported, uploadProofs);
+		if (!uploadProofs)
+		{
+			chatOwnDrops(reported, false);
+		}
 		announceDrops(reported, live, proofPlayerId, proofKey);
 		captureProofs(matched.labels, sourceName, uploadProofs, reserved, reported, proofPlayerId, proofKey);
 	}

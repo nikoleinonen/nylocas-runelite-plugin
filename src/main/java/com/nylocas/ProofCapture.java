@@ -14,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
@@ -60,6 +61,7 @@ final class ProofCapture
 	private final IntSupplier sessionId;
 	private final BooleanSupplier eventAfterEnd;
 	private final IntConsumer onEventEnded;
+	private final BiConsumer<TileMatch.ProofTarget, Boolean> dropLine;
 	private final Holds holds;
 	private final List<Call> proofCalls = new ArrayList<>();
 	private volatile boolean running;
@@ -67,7 +69,7 @@ final class ProofCapture
 	private int openChatFrames;
 	private int savedChatView = -1;
 
-	ProofCapture(Client client, ClientThread clientThread, DrawManager drawManager, ScheduledExecutorService executor, OkHttpClient okHttpClient, Gson gson, IntSupplier sessionId, BooleanSupplier eventAfterEnd, IntConsumer onEventEnded, Holds holds)
+	ProofCapture(Client client, ClientThread clientThread, DrawManager drawManager, ScheduledExecutorService executor, OkHttpClient okHttpClient, Gson gson, IntSupplier sessionId, BooleanSupplier eventAfterEnd, IntConsumer onEventEnded, BiConsumer<TileMatch.ProofTarget, Boolean> dropLine, Holds holds)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
@@ -78,6 +80,7 @@ final class ProofCapture
 		this.sessionId = sessionId;
 		this.eventAfterEnd = eventAfterEnd;
 		this.onEventEnded = onEventEnded;
+		this.dropLine = dropLine;
 		this.holds = holds;
 	}
 
@@ -237,6 +240,7 @@ final class ProofCapture
 		{
 			if (uploadProofs)
 			{
+				chatDrops(targets, false);
 				releaseReservations(targets);
 				if (running)
 				{
@@ -259,6 +263,7 @@ final class ProofCapture
 			log.warn("Could not encode proof", ex);
 			if (uploadProofs)
 			{
+				chatDrops(targets, false);
 				releaseReservations(targets);
 				proofFailed();
 			}
@@ -372,6 +377,7 @@ final class ProofCapture
 				}
 				log.debug("Proof upload failed", error);
 				releaseReservation(target);
+				chatDrop(target, false, session);
 				proofFailed();
 			}
 
@@ -388,11 +394,13 @@ final class ProofCapture
 					if (response.isSuccessful())
 					{
 						acknowledgeReservation(target);
+						chatDrop(target, true, session);
 						return;
 					}
 					String responseBody = response.body() == null ? "" : response.body().string();
 					log.debug("Proof rejected {} {}", response.code(), responseBody);
 					releaseReservation(target);
+					chatDrop(target, false, session);
 					rejectProof(response.code(), responseBody, session);
 				}
 				catch (IOException ex)
@@ -403,6 +411,7 @@ final class ProofCapture
 						return;
 					}
 					releaseReservation(target);
+					chatDrop(target, false, session);
 					proofFailed();
 				}
 			}
@@ -454,6 +463,28 @@ final class ProofCapture
 		{
 			call.cancel();
 		}
+	}
+
+	private void chatDrops(List<TileMatch.ProofTarget> targets, boolean submitted)
+	{
+		if (targets == null)
+		{
+			return;
+		}
+		int session = sessionId.getAsInt();
+		for (TileMatch.ProofTarget target : targets)
+		{
+			chatDrop(target, submitted, session);
+		}
+	}
+
+	private void chatDrop(TileMatch.ProofTarget target, boolean submitted, int session)
+	{
+		if (!running || session != sessionId.getAsInt() || dropLine == null || target == null)
+		{
+			return;
+		}
+		dropLine.accept(target, submitted);
 	}
 
 	private void releaseReservation(TileMatch.ProofTarget target)
